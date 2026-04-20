@@ -1,0 +1,63 @@
+# Visual Studio Code
+.vscode/
+
+# Visual Studio
+.vs/
+*.vcxproj.user
+*.vcxproj.filters
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# C++ compiled object files and libraries
+*.o
+*.obj
+*.lo
+*.libs
+*.so
+*.dylib
+*.dll
+*.def
+*.exp
+*.lib
+*.a
+
+# CUDA binaries and intermediate files
+*.ptx
+*.cubin
+*.fatbin
+*.nvvm
+*.cudafe1.cpp
+*.ii
+*.linkinfo
+*.cu.cpp
+*.cpp1.i
+
+# CUDA profiling and debugging files
+*.ncu-rep
+*.nsys-rep
+*.nsight-rep
+
+# IDE specific folders and files
+.idea/
+.clangd/
+.clion/
+.metadata/
+.tmp/
+.tmp/
+
+# Build directories
+build/
+x64/
+assets/point_clouds/
+*.csv
+out/*.bat
+out/*/
+out/*.csv
+out/*.json
+out/screenshots/*.png
+out/
+test_poisson.py
+test_integration_vs_sampling.py
+*.bat
