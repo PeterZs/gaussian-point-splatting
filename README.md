@@ -1,8 +1,9 @@
 # Gaussian Point Splatting
 
-![Teaser Image](https://github.com/JorisAR/GaussianPointSplatting/blob/main/teaser.png?raw=true)
+![Teaser image showing over 4 copies of a town rendered using Gaussians, with two magnified insets.](teaser.png?raw=true)
 <p align="center">
-  <em>Rendering over 425M Gaussians on an RTX 4070 Ti SUPER.</em>
+  <em>Rendering over 425M Gaussians interactively on an RTX 4070 Ti SUPER. We achieve this high throughput with a stochastic
+approach (the images shown here are converged) but avoid approximations, level-of-detail mechanisms and complex data structures</em>
 </p>
 
 We propose Gaussian point splatting, a stochastic method for rendering massive [3DGS](https://github.com/graphdeco-inria/gaussian-splatting) scenes. By sampling pixel-sized opaque points, splatting them atomically, and applying stochastic transparency, we eliminate the need for sorting. Our approach distributes workload evenly across GPU threads, enabling the real-time display of hundreds of millions of Gaussians efficiently.
@@ -15,10 +16,11 @@ We propose Gaussian point splatting, a stochastic method for rendering massive [
 If you find this code useful for your research, please consider citing our paper:
 
 ```bibtex
-@article{temporary_will_replace_later,
+@article{rijsdijk2026gps,
   title={Gaussian Point Splatting},
-  author={Author, A. and Author, B.},
-  journal={SIGGRAPH},
+  author={Rijsdijk, J. and Peters, C. and Marroquim, R. and Weinnman, M.},
+  journal={ACM Trans. Graph.},
+  publisher={Association for Computing Machinery},
   year={2026}
 }
 ```
