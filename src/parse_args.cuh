@@ -98,6 +98,9 @@ RenderSettings parseCommandLine(int argc, char** argv) {
         else if (arg == "--run_tests" || arg == "--run-tests") {
             settings.run_tests = true;
         }
+        else if (arg == "--snap_window_to_corner" || arg == "--snap-window-to-corner") {
+            settings.snap_window_to_corner = true;
+        }
         else if (arg == "--model-path") {
             std::string path = argv[++i];
             settings.model_path = path;

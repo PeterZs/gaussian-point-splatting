@@ -7,7 +7,7 @@
 
 class Window {
 public:
-    Window(int width, int height);
+    Window(int width, int height, bool snap_window_to_corner);
     void toggleVSync(bool enable);
     ~Window();
     void drawPixelBuffer(const unsigned char* h_image);

@@ -10,7 +10,7 @@
 
 // binary toggles
 
-//#define USE_COMPRESSED_GAUSSIANS // If defined, use 16 bytes for geometry, 60 bytes for SH (if enabled).
+#define USE_COMPRESSED_GAUSSIANS // If defined, use 16 bytes for geometry, 60 bytes for SH (if enabled).
 //#define DISABLE_SPHERICAL_HARMONICS // If defined, SH evaluation is disabled. This significantly decreases the VRAM footprint of the renderer.
 //#define USE_SDR_COLOR // If defined, uses a 32 bit word instead of a vec3 to store color per Gaussian, DISABLE_SPHERICAL_HARMONICS preferably used together with.
 //#define ENABLE_FREEZING_CULLING // If defined, an option appears in the menu to freeze the frustum so occlusion culling can be inspected. Used in Fig 13. in the paper.

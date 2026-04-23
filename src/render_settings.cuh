@@ -63,6 +63,7 @@ struct RenderSettings {
     bool reduce_point_count = false;
     bool play_camera_path_on_start = false;
     bool run_tests = false;
+    bool snap_window_to_corner = false;
     bool sort_morton_order = false;
     bool take_pmf_screenshot = false;
     bool create_evaluation_screenshots = false;

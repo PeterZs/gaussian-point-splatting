@@ -53,7 +53,7 @@ void render(RenderSettings& settings) {
 
 	std::cout << settings.resolution << std::endl;
 
-	Window window(settings.resolution.x, settings.resolution.y);
+	Window window(settings.resolution.x, settings.resolution.y, settings.snap_window_to_corner);
 	RenderServer renderServer(settings);
 
 	Menu menu(window.getGLFWWindow());

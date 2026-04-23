@@ -6,7 +6,7 @@
 #include "input_manager.h"
 bool Window::mouseLocked = true;
 
-Window::Window(int width, int height) : width(width), height(height), quadRenderer(nullptr) {
+Window::Window(int width, int height, bool snap_window_to_corner) : width(width), height(height), quadRenderer(nullptr) {
     if (!glfwInit()) {
         std::cerr << "Failed to initialize GLFW" << std::endl;
         exit(EXIT_FAILURE);
@@ -16,11 +16,26 @@ Window::Window(int width, int height) : width(width), height(height), quadRender
     glfwWindowHint(GLFW_CONTEXT_VERSION_MINOR, 3);
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
 
+    if (snap_window_to_corner)
+    {
+        glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+    }
+
     window = glfwCreateWindow(width, height, "Stochastic Gaussian Splatting", nullptr, nullptr);
     if (!window) {
         std::cerr << "Failed to create GLFW window" << std::endl;
         glfwTerminate();
         exit(EXIT_FAILURE);
+    }
+
+    if (snap_window_to_corner)
+    {
+        const GLFWvidmode* mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
+
+        int xpos = 0;// mode->width - width;
+        int ypos = 0;
+
+        glfwSetWindowPos(window, xpos, ypos);
     }
 
     glfwMakeContextCurrent(window);
