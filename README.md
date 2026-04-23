@@ -70,13 +70,13 @@ If you find this code useful for your research, please consider citing our paper
 
 | File | Description |
 | :--- | :--- |
-| [`main.cu`](https://www.google.com/search?q=main.cu) | Render loop and program entry |
-| [`src/config.h`](https://www.google.com/search?q=src/config.h) | Defines compile-time constants, for instance to toggle spherical harmonics and compression. |
-| [`src/core/rendering/passes/gaussian_point_splatting.cu`](https://www.google.com/search?q=src/core/rendering/passes/gaussian_point_splatting.cu) | Implementation of the main method, including kernels for preprocessing, splatting, and combining of samples. |
-| [`src/core/rendering/passes/post_processing_kernels.cu`](https://www.google.com/search?q=src/core/rendering/passes/post_processing_kernels.cu) | Implementation of temporal reuse. |
-| [`src/core/random/workload/workload_distributor.cuh`](https://www.google.com/search?q=src/core/random/workload/workload_distributor.cuh) | Handles the workload distribution algorithm as discussed in the paper. |
-| [`src/core/rendering/occlusion/gaussian_bvh.cu`](https://www.google.com/search?q=src/core/rendering/occlusion/gaussian_bvh.cu) | Computes the hierarchy and handles hierarchical culling. |
-| [`src/core/rendering/occlusion/depth_mip_chain.cu`](https://www.google.com/search?q=src/core/rendering/occlusion/depth_mip_chain.cu) | Computes the depth mip chain and exposes a device function to check whether an AABB at a certain depth is occluded or not. |
+| [`main.cu`](main.cu) | Render loop and program entry |
+| [`src/config.h`](src/config.h) | Defines compile-time constants, for instance to toggle spherical harmonics and compression. |
+| [`src/core/rendering/passes/gaussian_point_splatting.cu`](src/core/rendering/passes/gaussian_point_splatting.cu) | Implementation of the main method, including kernels for preprocessing, splatting, and combining of samples. |
+| [`src/core/rendering/passes/post_processing_kernels.cu`](src/core/rendering/passes/post_processing_kernels.cu) | Implementation of temporal reuse. |
+| [`src/core/random/workload/workload_distributor.cuh`](src/core/random/workload/workload_distributor.cuh) | Handles the workload distribution algorithm as discussed in the paper. |
+| [`src/core/rendering/occlusion/gaussian_bvh.cu`](src/core/rendering/occlusion/gaussian_bvh.cu) | Computes the hierarchy and handles hierarchical culling. |
+| [`src/core/rendering/occlusion/depth_mip_chain.cu`](src/core/rendering/occlusion/depth_mip_chain.cu) | Computes the depth mip chain and exposes a device function to check whether an AABB at a certain depth is occluded or not. |
 
 -----
 
