@@ -14,12 +14,24 @@
 #include "utils/utils.cuh"
 #include <cmath>
 
+#ifndef M_PI
 #define M_PI 3.14159265358979323846f
+#endif // M_PI
+#ifndef M_PI_CUBED
 #define M_PI_CUBED 31.0062766803f
+#endif // !M_PI_CUBED
+#ifndef M_PI_2
 #define M_PI_2 1.57079632679489661923f
+#endif // !M_PI_2
+#ifndef M_1_SQRT2
 #define M_1_SQRT2 0.70710678118f
+#endif // !M_1_SQRT2
+#ifndef M_SQRT2
 #define M_SQRT2 1.41421356237f
+#endif // !M_SQRT2
+#ifndef M_EPS
 #define M_EPS 1.0e-12f
+#endif // !M_EPS
 
 namespace CudaMath {
 	//todo improve/make tighter
@@ -457,18 +469,18 @@ struct GPUGaussianSceneCompressed {
 			gs.push_back(cg);
 		}
 
-		ERRCHECK(cudaMalloc(&d_gaussians, numGaussians * sizeof(QuantizedGaussianGeometry)));
+		ERRCHECK(cudaMalloc((void**) &d_gaussians, numGaussians * sizeof(QuantizedGaussianGeometry)));
 		ERRCHECK(cudaMemcpy(d_gaussians, gs.data(), numGaussians * sizeof(QuantizedGaussianGeometry), cudaMemcpyHostToDevice));
 
-		ERRCHECK(cudaMalloc(&d_opacities, numGaussians * sizeof(GAUSSIAN_OPACITY_TYPE)));
+		ERRCHECK(cudaMalloc((void**) &d_opacities, numGaussians * sizeof(GAUSSIAN_OPACITY_TYPE)));
 		ERRCHECK(cudaMemcpy(d_opacities, opacities.data(), numGaussians * sizeof(GAUSSIAN_OPACITY_TYPE), cudaMemcpyHostToDevice));
 
 #ifndef DISABLE_SPHERICAL_HARMONICS
-		ERRCHECK(cudaMalloc(&d_shs, numGaussians * sizeof(CompactSH)));
+		ERRCHECK(cudaMalloc((void**) &d_shs, numGaussians * sizeof(CompactSH)));
 		ERRCHECK(cudaMemcpy(d_shs, shs.data(), numGaussians * sizeof(CompactSH), cudaMemcpyHostToDevice));
 #endif
 
-		ERRCHECK(cudaMalloc(&d_colors, numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE)));
+		ERRCHECK(cudaMalloc((void**) &d_colors, numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE)));
 		ERRCHECK(cudaMemcpy(d_colors, colors.data(), numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE), cudaMemcpyHostToDevice));
 	}
 
@@ -563,17 +575,17 @@ struct GPUGaussianSceneUncompressed {
 			colors.push_back(sh_eval);
 		}
 
-		ERRCHECK(cudaMalloc(&d_gaussians, numGaussians * sizeof(GaussianGeometry)));
+		ERRCHECK(cudaMalloc((void**) &d_gaussians, numGaussians * sizeof(GaussianGeometry)));
 		ERRCHECK(cudaMemcpy(d_gaussians, gs.data(), numGaussians * sizeof(GaussianGeometry), cudaMemcpyHostToDevice));
 
-		ERRCHECK(cudaMalloc(&d_opacities, numGaussians * sizeof(float)));
+		ERRCHECK(cudaMalloc((void**) &d_opacities, numGaussians * sizeof(float)));
 		ERRCHECK(cudaMemcpy(d_opacities, opacities.data(), numGaussians * sizeof(float), cudaMemcpyHostToDevice));
 
 #ifndef DISABLE_SPHERICAL_HARMONICS
-		ERRCHECK(cudaMalloc(&d_shs, numGaussians * sizeof(float) * 48));
+		ERRCHECK(cudaMalloc((void**) &d_shs, numGaussians * sizeof(float) * 48));
 		ERRCHECK(cudaMemcpy(d_shs, shs.data(), numGaussians * sizeof(float) * 48, cudaMemcpyHostToDevice));
 #endif
-		ERRCHECK(cudaMalloc(&d_colors, numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE)));
+		ERRCHECK(cudaMalloc((void**) &d_colors, numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE)));
 		ERRCHECK(cudaMemcpy(d_colors, colors.data(), numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE), cudaMemcpyHostToDevice));
 	}
 

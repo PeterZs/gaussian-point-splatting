@@ -343,7 +343,9 @@ __global__ void splatGaussianPointsKernel(
 		if (depthBuffer[index] <= view_depth_bits) continue;
 
 		if (use_unbiased_2d_splatting) {
-			atomicMin(&depthBuffer[index], view_depth_bits | color);
+			//atomicMin(&depthBuffer[index], view_depth_bits | color);
+			atomicMin(reinterpret_cast<unsigned long long*>(&depthBuffer[index]),
+				static_cast<unsigned long long>(view_depth_bits | color));
 		}
 		else {
 			atomicAddColor(&depthBuffer[index], view_depth_bits | color, true);
@@ -685,8 +687,8 @@ void GaussianPointSplatting::update_image_buffers(const RenderSettings& settings
 	d_imageBufferB = nullptr;
 
 	uint32_t N = wishImageBufferSize * sizeof(uint64_t);
-	ERRCHECK(cudaMalloc((&d_imageBufferA), N));
-	ERRCHECK(cudaMalloc((&d_imageBufferB), N));
+	ERRCHECK(cudaMalloc((void**) (&d_imageBufferA), N));
+	ERRCHECK(cudaMalloc((void**) (&d_imageBufferB), N));
 }
 
 GaussianPointSplatting::GaussianPointSplatting(const RenderSettings& settings)
@@ -714,7 +716,7 @@ GaussianPointSplatting::GaussianPointSplatting(const RenderSettings& settings)
 	gaussianBVH.build_hierarchical_structure(gaussians);
 
 #ifdef ENABLE_FREEZING_CULLING
-	per_frame_weights_mask.malloc(gaussians.size());
+	per_frame_weights_mask.resize(gaussians.size());
 #endif    
 
 	//std::cout << "Tree Span: " << hierarchicalCulling->get_device_view().tree_span << std::endl;
@@ -725,7 +727,7 @@ GaussianPointSplatting::GaussianPointSplatting(const RenderSettings& settings)
 
 	update_image_buffers(settings);
 
-	ERRCHECK(cudaMalloc((&d_tempDepthBuffer), settings.resolution.x * settings.resolution.y * sizeof(float)));
+	ERRCHECK(cudaMalloc((void**) (&d_tempDepthBuffer), settings.resolution.x * settings.resolution.y * sizeof(float)));
 }
 
 GaussianPointSplatting::~GaussianPointSplatting() {

@@ -2,8 +2,13 @@
 #include <algorithm>
 #include <numeric>  
 #include <limits>   
-#include <execution>
 #include "utils/io.h"
+
+#include <thrust/for_each.h>
+#include <thrust/transform_reduce.h>
+#include <thrust/sort.h>
+#include <thrust/execution_policy.h>
+#include <thrust/iterator/counting_iterator.h>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -267,7 +272,7 @@ bool GaussianLoader::loadPlyFile(const std::string& filename, std::vector<CPUGau
 		if (!file) { std::cerr << "Short read in bulk mode.\n"; return false; }
 
 		// Parallel conversion
-		std::for_each(std::execution::par_unseq,
+		thrust::for_each(thrust::host,
 			gaussians.begin(), gaussians.end(),
 			[&](CPUGaussian& g) {
 			size_t i = static_cast<size_t>(&g - gaussians.data());
@@ -300,12 +305,11 @@ bool GaussianLoader::loadPlyFile(const std::string& filename, std::vector<CPUGau
 			return MinMax{ g.mean, g.mean };
 		};
 
-		MinMax mm = std::transform_reduce(
-			std::execution::par_unseq,
+		MinMax mm = thrust::transform_reduce(thrust::host,
 			gaussians.begin(), gaussians.end(),
+			transform,
 			MinMax{ glm::vec3(FLT_MAX), glm::vec3(-FLT_MAX) },
-			combine,
-			transform
+			combine  
 		);
 
 		glm::vec3 minn = mm.min;
@@ -315,8 +319,9 @@ bool GaussianLoader::loadPlyFile(const std::string& filename, std::vector<CPUGau
 
 		std::vector<uint64_t> morton(N);
 
-		std::for_each(std::execution::par_unseq,
-			morton.begin(), morton.end(),
+		thrust::for_each(thrust::host,
+			thrust::make_counting_iterator<size_t>(0),
+			thrust::make_counting_iterator<size_t>(N),
 			[&](size_t i) {
 			glm::vec3 rel = safe_div(gaussians[i].mean - minn, maxx - minn);
 			glm::vec3 scaled = rel * float((1 << 21) - 1);
@@ -328,7 +333,7 @@ bool GaussianLoader::loadPlyFile(const std::string& filename, std::vector<CPUGau
 		std::vector<size_t> idx(N);
 		std::iota(idx.begin(), idx.end(), 0);
 
-		std::sort(std::execution::par_unseq,
+		thrust::sort(thrust::host,
 			idx.begin(), idx.end(),
 			[&](size_t a, size_t b) {
 			return morton[a] < morton[b];

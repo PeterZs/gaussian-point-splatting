@@ -177,14 +177,14 @@ void GaussianBVH::build_hierarchical_structure(std::vector<CPUGaussian>& gaussia
 
 	if (dev.d_nodes) cudaFree(dev.d_nodes);
 	dev.nodeCount = (uint32_t)nodes.size();
-	ERRCHECK(cudaMalloc(&dev.d_nodes, dev.nodeCount * sizeof(GaussianBVHNode)));
+	ERRCHECK(cudaMalloc((void**) &dev.d_nodes, dev.nodeCount * sizeof(GaussianBVHNode)));
 	ERRCHECK(cudaMemcpy(dev.d_nodes, nodes.data(),
 		dev.nodeCount * sizeof(GaussianBVHNode),
 		cudaMemcpyHostToDevice));
 
 	uint32_t words = (dev.nodeCount + 31u) >> 5;
 	dev.culledMaskSize = words;
-	ERRCHECK(cudaMalloc(&dev.d_culledMask, words * sizeof(uint32_t)));
+	ERRCHECK(cudaMalloc((void**) &dev.d_culledMask, words * sizeof(uint32_t)));
 
 	// initialise runtime parameters in the device struct
 	dev.gaussians_per_block = static_cast<uint32_t>(primitives_per_node);

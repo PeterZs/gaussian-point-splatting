@@ -31,7 +31,11 @@ __device__ inline bool atomicAddColor(uint64_t* address, uint64_t value, bool ad
 		else if (target_depth < assumed_depth) { //Occlude previous
 			new_value = value;
 		}
-		old = atomicCAS(address, assumed, new_value);
+		//old = atomicCAS(address, assumed, new_value);
+		// Explicitly cast to the signature CUDA expects
+		old = atomicCAS(reinterpret_cast<unsigned long long*>(address),
+			static_cast<unsigned long long>(assumed),
+			static_cast<unsigned long long>(new_value));
 	} while (assumed != old);
 
 	return true;
@@ -55,7 +59,10 @@ __device__ inline bool atomicAddColorOverDraw(uint64_t* address, uint64_t value)
 
 		uint64_t new_value = new_depth | new_color;
 
-		old = atomicCAS(address, assumed, new_value);
+		//old = atomicCAS(address, assumed, new_value);
+		old = atomicCAS(reinterpret_cast<unsigned long long*>(address),
+			static_cast<unsigned long long>(assumed),
+			static_cast<unsigned long long>(new_value));
 	} while (assumed != old);
 
 	return true;

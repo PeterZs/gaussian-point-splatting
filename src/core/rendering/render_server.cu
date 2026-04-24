@@ -36,10 +36,10 @@ void RenderServer::initializeRenderer(const RenderSettings& settings) {
 
 	ERRCHECK(cudaGraphicsGLRegisterBuffer(&cudaPBOResource, pbo, cudaGraphicsMapFlagsWriteDiscard));
 
-	ERRCHECK(cudaMalloc(&d_depthBuffer[0], settings.resolution.x * settings.resolution.y * sizeof(float)));
-	ERRCHECK(cudaMalloc(&d_depthBuffer[1], settings.resolution.x * settings.resolution.y * sizeof(float)));
-	ERRCHECK(cudaMalloc(&d_colorBuffer[0], settings.resolution.x * settings.resolution.y * sizeof(glm::vec3)));
-	ERRCHECK(cudaMalloc(&d_colorBuffer[1], settings.resolution.x * settings.resolution.y * sizeof(glm::vec3)));
+	ERRCHECK(cudaMalloc((void**) &d_depthBuffer[0], settings.resolution.x * settings.resolution.y * sizeof(float)));
+	ERRCHECK(cudaMalloc((void**) &d_depthBuffer[1], settings.resolution.x * settings.resolution.y * sizeof(float)));
+	ERRCHECK(cudaMalloc((void**) &d_colorBuffer[0], settings.resolution.x * settings.resolution.y * sizeof(glm::vec3)));
+	ERRCHECK(cudaMalloc((void**) &d_colorBuffer[1], settings.resolution.x * settings.resolution.y * sizeof(glm::vec3)));
 
 
 	int render_pass_count = settings.render_pass_count;

@@ -62,7 +62,7 @@ public:
 
         if (_size > 0) {
             h_ptr = static_cast<T*>(std::malloc(_size * sizeof(T)));
-            CUDA_CHECK(cudaMalloc(&d_ptr, _size * sizeof(T)));
+            CUDA_CHECK(cudaMalloc((void**) &d_ptr, _size * sizeof(T)));
 
             // Initialize memory to match std::vector behavior
             std::memset(h_ptr, 0, _size * sizeof(T));

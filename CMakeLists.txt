@@ -97,9 +97,9 @@ target_compile_options(${PROJECT_NAME} PRIVATE
     $<$<COMPILE_LANGUAGE:CUDA>:
         -O3
         -use_fast_math
-        -Xptxas -O3
-        -Xptxas -dlcm=ca
-        -Xptxas -dscm=ca
+#        -Xptxas -O3
+#        -Xptxas -dlcm=ca
+#        -Xptxas -dscm=ca
         --expt-extended-lambda
         --expt-relaxed-constexpr
         -lineinfo
@@ -139,11 +139,22 @@ target_include_directories(${PROJECT_NAME} PUBLIC
     "${CMAKE_CURRENT_SOURCE_DIR}/packages/tinybvh"
 )
 
-# Link CUDA runtime + cuBLAS + system libs
 target_link_libraries(${PROJECT_NAME} PRIVATE
     CUDA::cudart
     CUDA::cublas
-    opengl32
     glfw
-    kernel32 user32 gdi32 winspool comdlg32 advapi32 shell32 ole32 oleaut32 uuid odbc32 odbccp32
 )
+if(WIN32)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        opengl32
+        kernel32 user32 gdi32 winspool comdlg32 advapi32 shell32 ole32 oleaut32 uuid odbc32 odbccp32
+    )
+else()
+    find_package(OpenGL REQUIRED)
+    find_package(Threads REQUIRED)
+    target_link_libraries(${PROJECT_NAME} PRIVATE
+        OpenGL::GL
+        Threads::Threads
+        dl
+    )
+endif()

@@ -79,7 +79,7 @@ DepthMipChain::DepthMipChain(int w, int h) {
             * (size_t)DepthMipChainDevice::level_height(view.height, view.levels, l);
     }
 
-    ERRCHECK(cudaMalloc(&view.d_mip, view.mip_size * sizeof(float)));
+    ERRCHECK(cudaMalloc((void**) &view.d_mip, view.mip_size * sizeof(float)));
 
 //#ifndef NDEBUG
 //    // Optional debug dump of mip layout

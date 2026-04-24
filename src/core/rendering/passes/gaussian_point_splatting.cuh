@@ -58,7 +58,7 @@ private:
 	void update_image_buffers(const RenderSettings& settings);
 
 #ifdef ENABLE_FREEZING_CULLING
-	GpuArray<WEIGHT_MASK_TYPE> per_frame_weights_mask = GpuArray<WEIGHT_MASK_TYPE>(DEVICE);
+	GpuArray<WEIGHT_MASK_TYPE> per_frame_weights_mask = GpuArray<WEIGHT_MASK_TYPE>();
 #endif
 
 	WorkloadDistributor* pointsWorkload = nullptr;

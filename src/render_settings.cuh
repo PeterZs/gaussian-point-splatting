@@ -113,7 +113,7 @@ struct RenderSettings {
     // -----------------------------
     void copyToGPU() {
         if (!d_frustumPlanes) {
-            cudaMalloc(&d_frustumPlanes, sizeof(glm::vec4) * frustumPlanes.size());
+            cudaMalloc((void**) &d_frustumPlanes, sizeof(glm::vec4) * frustumPlanes.size());
         }
         cudaMemcpy(d_frustumPlanes, frustumPlanes.data(),
             sizeof(glm::vec4) * frustumPlanes.size(),

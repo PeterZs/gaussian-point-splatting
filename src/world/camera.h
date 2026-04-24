@@ -36,10 +36,6 @@ public:
     std::string image_name = "0000";
     int image_id = 0;
 
-    float inline fov2foc() {
-
-    }
-
     static inline float fovdeg2focal(float fovdeg, int pixels) {
         float fovr = fovdeg * 0.01745329;
         return pixels / (2.0 * tanf(fovr / 2.0));
