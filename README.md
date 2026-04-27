@@ -18,8 +18,10 @@ If you find this code useful for your research, please consider citing our paper
 ```bibtex
 @article{rijsdijk2026gps,
   title={Gaussian Point Splatting},
-  author={Rijsdijk, J. and Peters, C. and Marroquim, R. and Weinnman, M.},
+  author={Rijsdijk, Joris and Peters, Christoph and Marroquim, Ricardo and Weinnman, Michael},
   journal={ACM Trans. Graph.},
+  volume = {45},
+  number = {4},
   publisher={Association for Computing Machinery},
   year={2026}
 }
