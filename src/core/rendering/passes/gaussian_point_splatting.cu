@@ -206,8 +206,8 @@ static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPrev
 {
 
 #ifndef ENABLE_FREEZING_CULLING
-	WEIGHT_MASK_TYPE* d_gaussianWeightFrameMask = nullptr,
-		bool freeze_culling = false;
+	WEIGHT_MASK_TYPE* d_gaussianWeightFrameMask = nullptr;
+	bool freeze_culling = false;
 #endif      
 
 	int blockSize = 256;
