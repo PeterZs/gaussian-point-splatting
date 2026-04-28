@@ -49,8 +49,8 @@ RenderSettings parseCommandLine(int argc, char** argv) {
         else if (arg == "--max-eval-count" || arg == "--max_eval_count") {
             settings.max_eval_count = std::stoi(argv[++i]);
         }
-        else if (arg == "--resolution-upscaling-factor" || arg == "--resolution_upscaling_factor") {
-            settings.resolution_upscaling_factor = std::stoi(argv[++i]);
+        else if (arg == "--supersampling-factor" || arg == "--supersampling_factor") {
+            settings.supersampling_factor = std::stoi(argv[++i]);
         }
         else if (arg == "--resolution") {
             glm::vec2 res{};
@@ -70,8 +70,8 @@ RenderSettings parseCommandLine(int argc, char** argv) {
         else if (arg == "--cull-small") {
             settings.cull_small_gaussians = true;
         }
-        else if (arg == "--reduce_point_count" || arg == "--reduce-point-count") {
-            settings.reduce_point_count = true;
+        else if (arg == "--one_point_per_thread" || arg == "--one-point-per-thread") {
+            settings.reduce_point_count = false;
         }
         else if (arg == "--disable_hierarchical_culling" || arg == "--disable-hierarchical-culling") {
             settings.enable_hierarchical_culling = false;

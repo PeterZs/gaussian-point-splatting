@@ -51,6 +51,8 @@ void Menu::render(RenderSettings& settings) {
 
     ImGui::Text("FPS: %.1f (%.2f ms)", ImGui::GetIO().Framerate, 1000.0f / ImGui::GetIO().Framerate);
 
+
+
     if (ImGui::BeginTabBar("MainTabs")) {
 
         if (ImGui::BeginTabItem("Statistics")) {
@@ -98,8 +100,8 @@ void Menu::render(RenderSettings& settings) {
             if (ImGui::Checkbox("Cull Small Gaussians", &settings.cull_small_gaussians)) {
                 settings.reset_accumulation = true;
             }
-            if (ImGui::DragInt("Resolution Super Sampling Factor", &settings.resolution_upscaling_factor, 1.0f, 1, 8)) {
-                settings.resolution_upscaling_factor = glm::clamp(settings.resolution_upscaling_factor, 1, 8);
+            if (ImGui::DragInt("Resolution Supersampling Factor", &settings.supersampling_factor, 1.0f, 1, 8)) {
+                settings.supersampling_factor = glm::clamp(settings.supersampling_factor, 1, 8);
                 settings.reset_accumulation = true;
             }
             if (ImGui::Checkbox("Reduce Point Count", &settings.reduce_point_count)) {

@@ -10,7 +10,6 @@ We propose Gaussian point splatting, a stochastic method for rendering massive [
 
 
 
-
 ## Citation
 
 If you find this code useful for your research, please consider citing our paper:
@@ -34,7 +33,8 @@ If you find this code useful for your research, please consider citing our paper
 
   * CUDA Toolkit (developed with version 12.6)
   * CMake (\>= 3.27)
-  * All others are included directly in `/packages`
+  * All other third-party packages are included directly in `/packages`
+  * **Note:** This application requires an NVIDIA GPU to work. On systems with multiple GPUs (e.g., laptops with integrated graphics), you must ensure the application is configured to run on your dedicated NVIDIA GPU. If the executable defaults to the integrated GPU, the CUDA-OpenGL interoperability will fail to initialize.
 
 ### Installation
 
@@ -54,21 +54,29 @@ If you find this code useful for your research, please consider citing our paper
 | :--- | :--- |
 | `--model-path <path>` | Path to the trained Gaussian point model. (Either a `.ply` file, or the root folder of a 3DGS output.) |
 | `--resolution <w> <h>` | Sets the render window resolution (e.g., `--resolution 1920 1080`). |
-| `--samples-per-pixel <n>` | Sets the number of samples per pixel. |
-| `--background <r> <g> <b>` | Sets the RGB background color. |
+| `--supersampling-factor <n>` | Sets the supersampling factor, default 2. (i.e. 2x2 samples per output pixel) |
+| `--samples-per-pixel <n>` | Sets the number of samples per pixel, default 1. |
 | `--fovy <degrees>` | Overrides the default camera Field of View. |
 | `--camera-path <path>` | Load a `.json` camera trajectory exported by 3DGS. If `--model--path` points to a 3DGS output directory, it automatically loads the camera path. |
-| `--play-camera-path` | Automatically play the loaded camera path on start. |
-| `--disable-gui` | Disables the UI overlay. |
-| `--cull-small` | Enables culling for small Gaussian splats from [Splatshop](https://github.com/m-schuetz/splatshop). |
 | `--disable-hierarchical-culling` | Disables hierarchical culling optimizations. |
 | `--disable-occlusion-culling` | Disables occlusion culling. |
 | `--sort-morton-order` | Enables Morton order sorting for faster processing and lower (system) RAM usage. |
-| `--reduce-point-count` | Uses K = (super sampling rate)^2 as described in the paper. |
+| `--one-point-per-thread` | If enabled, the renderer uses K = 1 (as described in the paper). By default, K = (supersampling factor)^2. Enabling this flag enables mathematically more correct rendering, at the cost of (much) higher frame times. |
+| `--play-camera-path` | Automatically play the loaded camera path on start. |
+| `--disable-gui` | Disables the UI overlay. |
+| `--cull-small` | Enables culling for small Gaussian splats from [Splatshop](https://github.com/m-schuetz/splatshop). This does not make a big difference in frame time for our renderer. |
+| `--background <r> <g> <b>` | Sets the RGB background color. |
 
+
+### Controls
+
+- Use WASD (horizontal movement), space bar (vertical up), ctrl (vertical down) and the mouse (rotation) to control the camera.
+- Use backspace to toggle the visibility of the UI.
+- Use escape to toggle mouse pointer lock.
+- Use F5 to take a screenshot, saved at `./out/screenshots`.
 -----
 
-### Important Files
+## Important Files
 
 | File | Description |
 | :--- | :--- |

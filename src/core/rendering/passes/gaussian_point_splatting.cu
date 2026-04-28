@@ -42,7 +42,7 @@ __global__ void preprocessGaussiansKernel(
 	const bool cull_small_gaussians,
 	const bool use_unbiased_2d_splatting,
 	const bool reduce_point_count,
-	const int resolution_upscaling_factor
+	const int supersampling_factor
 ) {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	uint2 seed = Random::makeSeed(idx, frame_seed);
@@ -82,7 +82,7 @@ __global__ void preprocessGaussiansKernel(
 		glm::vec3 cameraPosition = glm::vec3(camMatrix[3]);
 
 		glm::vec3 cov2d = CudaMath::computeCov2D(vMatrix, cov, gaussianGeometry.mean, tan_fov, focal);
-		cov2d += glm::vec3{ 0.3f * resolution_upscaling_factor * resolution_upscaling_factor, 0.0f, 0.3f * resolution_upscaling_factor * resolution_upscaling_factor };
+		cov2d += glm::vec3{ 0.3f * supersampling_factor * supersampling_factor, 0.0f, 0.3f * supersampling_factor * supersampling_factor };
 		const float det = cov2d.x * cov2d.z - cov2d.y * cov2d.y;
 
 		if (det <= 0.0f) {
@@ -127,11 +127,11 @@ __global__ void preprocessGaussiansKernel(
 			importance = opacity * TWO_PI * s_det;
 		}
 
-		if (enable_occlusion_culling && depth_mip_is_occluded(depthMipChain, proj_mean.z, p_min_bounds / resolution_upscaling_factor, p_max_bounds / resolution_upscaling_factor)) {
+		if (enable_occlusion_culling && depth_mip_is_occluded(depthMipChain, proj_mean.z, p_min_bounds / supersampling_factor, p_max_bounds / supersampling_factor)) {
 			break;
 		}
 
-		float K = static_cast<float>(resolution_upscaling_factor * resolution_upscaling_factor * POINTS_PER_KERNEL);
+		float K = static_cast<float>(supersampling_factor * supersampling_factor * POINTS_PER_KERNEL);
 		if (!reduce_point_count) K = 1.0f;
 
 		uint32_t expected_num_points = static_cast<uint32_t>(importance);
@@ -202,7 +202,7 @@ static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPrev
 	const bool cull_small_gaussians,
 	const bool use_unbiased_2d_splatting,
 	const bool reduce_point_count,
-	const int resolution_upscaling_factor)
+	const int supersampling_factor)
 {
 
 #ifndef ENABLE_FREEZING_CULLING
@@ -238,7 +238,7 @@ static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPrev
 		cull_small_gaussians,
 		use_unbiased_2d_splatting,
 		reduce_point_count,
-		resolution_upscaling_factor
+		supersampling_factor
 	);
 }
 
@@ -264,7 +264,7 @@ __global__ void splatGaussianPointsKernel(
 	const float far_plane,
 	const bool use_unbiased_2d_splatting,
 	const bool reduce_point_count,
-	const int resolution_upscaling_factor
+	const int supersampling_factor
 ) {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	if (idx >= numPoints) return;
@@ -284,7 +284,7 @@ __global__ void splatGaussianPointsKernel(
 	glm::mat3 cov = CudaMath::scale_rot_to_cov(gaussianGeometry.scale, gaussianGeometry.quat);
 	// Screen-space Gaussian parameters
 	glm::vec3 cov2d = CudaMath::computeCov2D(vMatrix, cov, gaussianGeometry.mean, tan_fov, focal);
-	cov2d += glm::vec3{ 0.3f * resolution_upscaling_factor * resolution_upscaling_factor, 0.0f, 0.3f * resolution_upscaling_factor * resolution_upscaling_factor }; // slight blur
+	cov2d += glm::vec3{ 0.3f * supersampling_factor * supersampling_factor, 0.0f, 0.3f * supersampling_factor * supersampling_factor }; // slight blur
 
 	const float det = cov2d.x * cov2d.z - cov2d.y * cov2d.y;
 	if (det <= 0) return;
@@ -307,7 +307,7 @@ __global__ void splatGaussianPointsKernel(
 	const uint64_t view_depth_bits = CudaMath::convert_view_depth(view_mean.z, near_plane, far_plane) << DEPTH_SHIFT;
 	float opacity = scene.get_opacity(g_i);
 
-	int K = resolution_upscaling_factor * resolution_upscaling_factor * POINTS_PER_KERNEL;
+	int K = supersampling_factor * supersampling_factor * POINTS_PER_KERNEL;
 	if (!reduce_point_count) K = 1;
 #pragma unroll
 	for (size_t p = 0; p < numPasses * K; ++p)
@@ -370,7 +370,7 @@ static void launch_splatPointsKernel(GPUGaussianScene& scene,
 	const float far_plane,
 	const bool use_unbiased_2d_splatting,
 	const bool reduce_point_count,
-	const int resolution_upscaling_factor)
+	const int supersampling_factor)
 {
 	const int blockSize = suggestBlockSize(splatGaussianPointsKernel);
 	dim3 grid = makeGrid1D(numPoints, blockSize);
@@ -395,7 +395,7 @@ static void launch_splatPointsKernel(GPUGaussianScene& scene,
 		far_plane,
 		use_unbiased_2d_splatting,
 		reduce_point_count,
-		resolution_upscaling_factor
+		supersampling_factor
 	);
 }
 
@@ -414,7 +414,7 @@ __global__ void processImageBuffer(
 	const int imageBufferSize,
 	const float near_plane,
 	const float far_plane,
-	const int resolution_upscaling_factor,
+	const int supersampling_factor,
 	const uint64_t initial_value
 ) {
 	int x = blockIdx.x * blockDim.x + threadIdx.x;
@@ -423,19 +423,19 @@ __global__ void processImageBuffer(
 
 	uint32_t idx = y * width + x;
 
-	int buffer_x = x * resolution_upscaling_factor;
-	int buffer_y = y * resolution_upscaling_factor;
+	int buffer_x = x * supersampling_factor;
+	int buffer_y = y * supersampling_factor;
 
-	int up_width = width * resolution_upscaling_factor;
-	int up_height = height * resolution_upscaling_factor;
+	int up_width = width * supersampling_factor;
+	int up_height = height * supersampling_factor;
 
 	float depth = 1e9f;// depthBuffer[idx];// 1e9f;
 	glm::vec3 color = glm::vec3(0.0);
 	bool any_points = false;
 #pragma unroll
-	for (int dx = 0; dx < resolution_upscaling_factor; dx++)
+	for (int dx = 0; dx < supersampling_factor; dx++)
 #pragma unroll
-		for (int dy = 0; dy < resolution_upscaling_factor; dy++)
+		for (int dy = 0; dy < supersampling_factor; dy++)
 			for (int p = 0; p < numPasses; ++p) {
 				int i = posToMemory(buffer_x + dx, buffer_y + dy, p, numPasses, up_width, up_height);
 				if (i >= imageBufferSize) continue;
@@ -457,7 +457,7 @@ __global__ void processImageBuffer(
 			}
 
 	// Store averaged results
-	float invPasses = 1.0f / (numPasses * resolution_upscaling_factor * resolution_upscaling_factor);
+	float invPasses = 1.0f / (numPasses * supersampling_factor * supersampling_factor);
 	if constexpr (!depthOnly) {
 		colorBuffer[idx] = color * invPasses; //*10.0f;
 	}
@@ -476,7 +476,7 @@ static void launch_combineKernel(uint64_t* d_imageBuffer,
 	int width, int height,
 	int numPasses, int imageBufferSize,
 	const float near_plane, const float far_plane,
-	const int resolution_upscaling_factor,
+	const int supersampling_factor,
 	uint64_t initial_value)
 {
 	auto kernel = processImageBuffer<depthOnly, keepOldIfInitialValue>;
@@ -494,7 +494,7 @@ static void launch_combineKernel(uint64_t* d_imageBuffer,
 		imageBufferSize,
 		near_plane,
 		far_plane,
-		resolution_upscaling_factor,
+		supersampling_factor,
 		initial_value
 	);
 }
@@ -533,10 +533,10 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 	float fovx = 2.0f * glm::atan(t_f_y * r);
 	float t_f_x = glm::tan(fovx * 0.5f);
 	glm::vec2 tan_fov{ t_f_x, t_f_y };
-	glm::vec2 focal{ settings.resolution.x * settings.resolution_upscaling_factor / (2.0f * tan_fov.x),
-					 settings.resolution.y * settings.resolution_upscaling_factor / (2.0f * tan_fov.y) };
+	glm::vec2 focal{ settings.resolution.x * settings.supersampling_factor / (2.0f * tan_fov.x),
+					 settings.resolution.y * settings.supersampling_factor / (2.0f * tan_fov.y) };
 
-	const float pixel_count = float(settings.resolution.x * settings.resolution_upscaling_factor) * float(settings.resolution.y * settings.resolution_upscaling_factor);
+	const float pixel_count = float(settings.resolution.x * settings.supersampling_factor) * float(settings.resolution.y * settings.supersampling_factor);
 
 	settings.statistics->numPoints = 0;
 	uint64_t backGroundColor = 0xFFFFFFF000000000;
@@ -577,11 +577,11 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 			vpMatrix, vMatrix, camMatrix, settings.d_frustumPlanes,
 			tan_fov, focal,
 			numGaussians,
-			settings.resolution.x * settings.resolution_upscaling_factor, settings.resolution.y * settings.resolution_upscaling_factor, frame,
+			settings.resolution.x * settings.supersampling_factor, settings.resolution.y * settings.supersampling_factor, frame,
 			settings.enable_occlusion_culling, settings.enable_hierarchical_culling, settings.cull_small_gaussians,
 			settings.use_unbiased_2d_splatting,
 			settings.reduce_point_count,
-			settings.resolution_upscaling_factor);
+			settings.supersampling_factor);
 
 		pointsWorkload->build();
 		uint32_t totalWeight = pointsWorkload->getNumSamples();
@@ -607,7 +607,7 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 				pointsWorkload,
 				current_image_buffer,
 				vpMatrix, vMatrix, camMatrix, tan_fov, focal,
-				settings.resolution.x * settings.resolution_upscaling_factor, settings.resolution.y * settings.resolution_upscaling_factor,
+				settings.resolution.x * settings.supersampling_factor, settings.resolution.y * settings.supersampling_factor,
 				numPasses,
 				frame + 1,
 				pointCount,
@@ -615,7 +615,7 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 				settings.far_view_plane,
 				settings.use_unbiased_2d_splatting,
 				settings.reduce_point_count,
-				settings.resolution_upscaling_factor);
+				settings.supersampling_factor);
 		}
 	};
 
@@ -630,7 +630,7 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 		launch_combineKernel<true, false>(current_image_buffer, d_image, d_depth,
 			settings.resolution.x, settings.resolution.y, numPasses, imageBufferSize,
 			settings.near_view_plane, settings.far_view_plane,
-			settings.resolution_upscaling_factor,
+			settings.supersampling_factor,
 			backGroundColor);
 		//launch_inPaintDepthKernel(d_depth, d_tempDepthBuffer, settings.resolution.x, settings.resolution.y, 3);
 		depthMipChain.build_mipchain(d_depth, settings.occlusion_culling_min_reduce_count);
@@ -644,7 +644,7 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 
 	launch_combineKernel<false, false>(current_image_buffer, d_image, d_depth,
 		settings.resolution.x, settings.resolution.y, numPasses, imageBufferSize, settings.near_view_plane, settings.far_view_plane,
-		settings.resolution_upscaling_factor,
+		settings.supersampling_factor,
 		backGroundColor);
 
 	if (settings.enable_occlusion_culling) {
@@ -665,8 +665,8 @@ uint64_t* GaussianPointSplatting::get_previous_image_buffer(int frame_index) con
 
 void GaussianPointSplatting::update_image_buffers(const RenderSettings& settings) {
 #ifdef MORTON_ORDER_IMAGE_BUFFER
-	int tiles_per_row = (settings.resolution.x * settings.resolution_upscaling_factor + MORTON_ORDER_TILE_SIZE - 1) >> MORTON_ORDER_TILE_BITS;
-	int tiles_per_col = (settings.resolution.y * settings.resolution_upscaling_factor + MORTON_ORDER_TILE_SIZE - 1) >> MORTON_ORDER_TILE_BITS;
+	int tiles_per_row = (settings.resolution.x * settings.supersampling_factor + MORTON_ORDER_TILE_SIZE - 1) >> MORTON_ORDER_TILE_BITS;
+	int tiles_per_col = (settings.resolution.y * settings.supersampling_factor + MORTON_ORDER_TILE_SIZE - 1) >> MORTON_ORDER_TILE_BITS;
 
 	size_t padded_pixels = static_cast<size_t>(tiles_per_row) *
 		static_cast<size_t>(tiles_per_col) *

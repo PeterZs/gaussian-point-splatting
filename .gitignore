@@ -61,3 +61,4 @@ out/
 test_poisson.py
 test_integration_vs_sampling.py
 *.bat
+imgui.ini

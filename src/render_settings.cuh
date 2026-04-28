@@ -46,7 +46,7 @@ struct RenderSettings {
     // -----------------------------
     AccumulationMode accumulationMode = AccumulationMode::ProgressiveRendering;
     int render_pass_count = 1;
-    int resolution_upscaling_factor = 2;
+    int supersampling_factor = 2;
     int occlusion_culling_min_reduce_count = 0;
     int max_number_of_points = 250000000;
     bool grid_enabled = false;
@@ -60,7 +60,7 @@ struct RenderSettings {
     bool reset_camera = false;
     bool reset_accumulation = false;
     bool nsight_active = false;
-    bool reduce_point_count = false;
+    bool reduce_point_count = true;
     bool play_camera_path_on_start = false;
     bool run_tests = false;
     bool snap_window_to_corner = false;
