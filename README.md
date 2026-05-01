@@ -96,10 +96,13 @@ If you find this code useful for your research, please consider citing our paper
 
 This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](LICENSE) file for details.
 
-## Data Credits
+## Acknowledgments
 
-The large-scale scenes used in our teaser and evaluations were provided by **Andrii Shramko**.
+This work was supported by the Dutch Research Council (NWO) under the project *VR Retrofit-4U* (Grant ID: [10.61686/EIHMV70145](https://doi.org/10.61686/EIHMV70145)).
 
-> "3D scanning data created and provided by Andrii Shramko, Teleportour. [https://www.linkedin.com/in/andrii-shramko/](https://www.linkedin.com/in/andrii-shramko/) 
-> [https://www.linkedin.com/company/teleportour/](https://www.linkedin.com/company/teleportour/) 
-> [teleportour.com](http://teleportour.com)"
+The large-scale scenes used in our teaser and evaluations were provided by [Andrii Shramko](https://www.linkedin.com/in/andrii-shramko/), [Teleportour](https://teleportour.com/).
+
+We also thank the authors of the following works for the remaining scenes:
+- [Tanks and Temples](https://tanksandtemples.org/)
+- [Mip-NeRF](https://jonbarron.info/mipnerf/)
+- [Deep Blending](https://arxiv.org/abs/1808.06579)
