@@ -15,14 +15,15 @@ We propose Gaussian point splatting, a stochastic method for rendering massive [
 If you find this code useful for your research, please consider citing our paper:
 
 ```bibtex
-@article{rijsdijk2026gps,
-  title={Gaussian Point Splatting},
-  author={Rijsdijk, Joris and Peters, Christoph and Marroquim, Ricardo and Weinnman, Michael},
-  journal={ACM Trans. Graph.},
+@article{Rijsdijk2026GaussianPointSplatting,
+  title = {Gaussian Point Splatting},
+  author = {Rijsdijk, Joris and Peters, Christoph and Marroquim, Ricardo and Weinnman, Michael},
+  journal = {ACM Trans. Graph.},
   volume = {45},
   number = {4},
-  publisher={Association for Computing Machinery},
-  year={2026}
+  publisher = {Association for Computing Machinery},
+  year = {2026},
+  doi = {10.1145/3811272}
 }
 ```
 
