@@ -79,6 +79,8 @@ If you find this code useful for your research, please consider citing our paper
 
 ## Important Files
 
+The main contributions of the paper can be found in the following files:
+
 | File | Description |
 | :--- | :--- |
 | [`src/main.cu`](src/main.cu) | Render loop and program entry |
@@ -88,6 +90,7 @@ If you find this code useful for your research, please consider citing our paper
 | [`src/core/random/workload/workload_distributor.cuh`](src/core/random/workload/workload_distributor.cuh) | Handles the workload distribution algorithm as discussed in the paper. |
 | [`src/core/rendering/occlusion/gaussian_bvh.cu`](src/core/rendering/occlusion/gaussian_bvh.cu) | Computes the hierarchy and handles hierarchical culling. |
 | [`src/core/rendering/occlusion/depth_mip_chain.cu`](src/core/rendering/occlusion/depth_mip_chain.cu) | Computes the depth mip chain and exposes a device function to check whether an AABB at a certain depth is occluded or not. |
+| [`assets/cameras/*.json`](assets/cameras) | The camera paths used to run our experiments and render our supplemental video. The file format is consistent with 3DGS. |
 
 -----
 
