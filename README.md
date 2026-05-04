@@ -97,6 +97,20 @@ The main contributions of the paper can be found in the following files:
 
 -----
 
+### Evaluation Scenes
+
+The following scenes were used to test the implementation:
+
+- [Opole campus (25 M Gaussians)](https://www.youtube.com/watch?v=0GJPDYC9zb8),
+
+- [St. Sebastian church (30 M Gaussians)](https://www.youtube.com/watch?v=bMXM9ep6Y5I)
+
+- [Jastrzebia Góra (106M Gaussians)](https://www.youtube.com/watch?v=vxQAPPEu_UA)
+ 
+- The Tanks and Temples, Mip-NeRF360 and Deep Blending 3DGS scenes can be found [here](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/datasets/pretrained/models.zip), or linked on the [3DGS repository](https://github.com/graphdeco-inria/gaussian-splatting)
+
+-----
+
 
 ## License
 
@@ -106,9 +120,4 @@ This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](
 
 This work was supported by the Dutch Research Council (NWO) under the project *VR Retrofit-4U* (Grant ID: [10.61686/EIHMV70145](https://doi.org/10.61686/EIHMV70145)).
 
-The large-scale scenes used in our teaser and evaluations were provided by [Andrii Shramko](https://www.linkedin.com/in/andrii-shramko/), [Teleportour](https://teleportour.com/).
-
-We also thank the authors of the following works for the remaining scenes:
-- [Tanks and Temples](https://tanksandtemples.org/)
-- [Mip-NeRF](https://jonbarron.info/mipnerf/)
-- [Deep Blending](https://arxiv.org/abs/1808.06579)
+The large-scale scene (Jastrzebia Góra) used in our teaser was provided by [Andrii Shramko](https://www.linkedin.com/in/andrii-shramko/), [Teleportour](https://teleportour.com/).
