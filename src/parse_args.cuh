@@ -40,6 +40,12 @@ RenderSettings parseCommandLine(int argc, char** argv) {
             settings.fovy = std::stof(argv[++i]);
             settings.override_camera_settings = true;
         }
+        else if (arg == "--near-view-plane" || arg == "--near_view_plane") {
+            settings.near_view_plane = std::stof(argv[++i]);
+        }
+        else if (arg == "--far-view-plane" || arg == "--far_view_plane") {
+            settings.far_view_plane = std::stof(argv[++i]);
+        }
         else if (arg == "--samples-per-pixel" || arg == "--samples_per_pixel") {
             settings.render_pass_count = std::stoi(argv[++i]);
         }

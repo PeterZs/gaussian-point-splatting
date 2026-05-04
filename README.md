@@ -55,9 +55,11 @@ If you find this code useful for your research, please consider citing our paper
 | :--- | :--- |
 | `--model-path <path>` | Path to the trained Gaussian point model. (Either a `.ply` file, or the root folder of a 3DGS output.) |
 | `--resolution <w> <h>` | Sets the render window resolution (e.g., `--resolution 1920 1080`). |
-| `--supersampling-factor <n>` | Sets the supersampling factor, default 2. (i.e. 2x2 samples per output pixel) |
-| `--samples-per-pixel <n>` | Sets the number of samples per pixel, default 1. |
-| `--fovy <degrees>` | Overrides the default camera Field of View. |
+| `--supersampling-factor <n>` | Overrides the default supersampling factor, (2 -> 2x2 samples per output pixel) |
+| `--samples-per-pixel <n>` | Overrides the default number of samples per pixel, (1) |
+| `--fovy <degrees>` | Overrides the default camera field of view (45) |
+| `--near-view-plane <distance>` | Overrides the default camera near view plane (0.2) |
+| `--far-view-plane <distance>` | Overrides the default camera far view plane (10000) |
 | `--camera-path <path>` | Load a `.json` camera trajectory exported by 3DGS. If `--model--path` points to a 3DGS output directory, it automatically loads the camera path. |
 | `--disable-hierarchical-culling` | Disables hierarchical culling optimizations. |
 | `--disable-occlusion-culling` | Disables occlusion culling. |
@@ -88,6 +90,7 @@ The main contributions of the paper can be found in the following files:
 | [`src/core/rendering/passes/gaussian_point_splatting.cu`](src/core/rendering/passes/gaussian_point_splatting.cu) | Implementation of the main method, including kernels for preprocessing, splatting, and combining of samples. |
 | [`src/core/rendering/passes/post_processing_kernels.cuh`](src/core/rendering/passes/post_processing_kernels.cuh) | Implementation of temporal reuse. |
 | [`src/core/random/workload/workload_distributor.cuh`](src/core/random/workload/workload_distributor.cuh) | Handles the workload distribution algorithm as discussed in the paper. |
+| [`src/core/gaussians/gaussian_types.cuh`](src/core/gaussians/gaussian_types.cuh) | Implementation of our compressed Gaussian format. |
 | [`src/core/rendering/occlusion/gaussian_bvh.cu`](src/core/rendering/occlusion/gaussian_bvh.cu) | Computes the hierarchy and handles hierarchical culling. |
 | [`src/core/rendering/occlusion/depth_mip_chain.cu`](src/core/rendering/occlusion/depth_mip_chain.cu) | Computes the depth mip chain and exposes a device function to check whether an AABB at a certain depth is occluded or not. |
 | [`assets/cameras/*.json`](assets/cameras) | The camera paths used to run our experiments and render our supplemental video. The file format is consistent with 3DGS. |
