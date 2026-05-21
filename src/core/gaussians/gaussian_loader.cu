@@ -107,7 +107,7 @@ static size_t plyTypeSize(const std::string& type) {
     if (type == "double" || type == "float64" || type == "int64" || type == "uint64") return 8;
     if (type == "short" || type == "ushort" || type == "int16" || type == "uint16") return 2;
     if (type == "char" || type == "uchar" || type == "int8" || type == "uint8")  return 1;
-    return 4; // safe fallback — all 3DGS fields are float
+    return 4; // safe fallback ï¿½ all 3DGS fields are float
 }
 
 /// Parse the PLY header and fill a PlyFieldOffsets. Returns false on fatal error.
@@ -218,7 +218,7 @@ static CPUGaussian recordToCPUGaussian(const uint8_t* rec, const PlyFieldOffsets
         getf(rec, off.rot[3])
     ));
 
-    // SH — DC band always present
+    // SH ï¿½ DC band always present
     g.sh[0] = getf(rec, off.f_dc[0]);
     g.sh[1] = getf(rec, off.f_dc[1]);
     g.sh[2] = getf(rec, off.f_dc[2]);
@@ -319,7 +319,7 @@ bool GaussianLoader::loadPlyFile(const std::string& filename,
 
 #ifndef DISABLE_SPHERICAL_HARMONICS
     if (!offsets.has_rest()) {
-        std::cerr << "Warning: PLY has no f_rest fields — higher-order SH coefficients will be zero.\n";
+        std::cerr << "Warning: PLY has no f_rest fields -> higher-order SH coefficients will be zero.\n";
     }
 #endif
 
