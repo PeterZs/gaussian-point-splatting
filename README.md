@@ -17,7 +17,7 @@ If you find this code useful for your research, please consider citing our paper
 ```bibtex
 @article{Rijsdijk2026GaussianPointSplatting,
   title = {Gaussian Point Splatting},
-  author = {Rijsdijk, Joris and Peters, Christoph and Marroquim, Ricardo and Weinnman, Michael},
+  author = {Rijsdijk, Joris and Peters, Christoph and Weinnman, Michael and Marroquim, Ricardo},
   journal = {ACM Trans. Graph.},
   volume = {45},
   number = {4},
@@ -105,7 +105,7 @@ The following scenes were used to test the implementation:
 
 - [St. Sebastian church (30 M Gaussians)](https://www.youtube.com/watch?v=bMXM9ep6Y5I)
 
-- [Jastrzebia Góra (106M Gaussians)](https://www.youtube.com/watch?v=vxQAPPEu_UA)
+- [Jastrzebia GÃ³ra (106M Gaussians)](https://www.youtube.com/watch?v=vxQAPPEu_UA)
  
 - The Tanks and Temples, Mip-NeRF360 and Deep Blending 3DGS scenes can be found [here](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/datasets/pretrained/models.zip), or linked on the [3DGS repository](https://github.com/graphdeco-inria/gaussian-splatting)
 
@@ -120,4 +120,4 @@ This project is licensed under the **BSD 3-Clause License** - see the [LICENSE](
 
 This work was supported by the Dutch Research Council (NWO) under the project *VR Retrofit-4U* (Grant ID: [10.61686/EIHMV70145](https://doi.org/10.61686/EIHMV70145)).
 
-The large-scale scene (Jastrzebia Góra) used in our teaser was provided by [Andrii Shramko](https://www.linkedin.com/in/andrii-shramko/), [Teleportour](https://teleportour.com/).
+The large-scale scene (Jastrzebia GÃ³ra) used in our teaser was provided by [Andrii Shramko](https://www.linkedin.com/in/andrii-shramko/), [Teleportour](https://teleportour.com/).
