@@ -56,6 +56,7 @@ If you find this code useful for your research, please consider citing our paper
 | `--model-path <path>` | Path to the trained Gaussian point model. (Either a `.ply` file, or the root folder of a 3DGS output.) |
 | `--resolution <w> <h>` | Sets the render window resolution (e.g., `--resolution 1920 1080`). |
 | `--supersampling-factor <n>` | Overrides the default supersampling factor, (2 -> 2x2 samples per output pixel) |
+| `--max-number-of-points <n>` | Overrides the default limit on the number of points per frame, (250e6). If the limit is too low, some Gaussians might not render. Higher limits use more VRAM. |
 | `--samples-per-pixel <n>` | Overrides the default number of samples per pixel, (1) |
 | `--fovy <degrees>` | Overrides the default camera field of view (45) |
 | `--near-view-plane <distance>` | Overrides the default camera near view plane (0.2) |
