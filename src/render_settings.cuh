@@ -47,6 +47,7 @@ struct RenderSettings {
     AccumulationMode accumulationMode = AccumulationMode::ProgressiveRendering;
     int render_pass_count = 1;
     int supersampling_factor = 2;
+    int immediate_splat_threshold = 8;
     int occlusion_culling_min_reduce_count = 0;
     int max_number_of_points = 250000000;
     bool grid_enabled = false;

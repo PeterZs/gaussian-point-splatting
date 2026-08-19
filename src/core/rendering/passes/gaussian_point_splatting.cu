@@ -11,13 +11,142 @@
 
 
 // --------------------------------------
+// Common Device Inline Functions
+// --------------------------------------
+
+__device__ __forceinline__ bool loadAndTransformGaussian(
+	const GPUGaussianScene& scene,
+	const uint32_t g_i,
+	const glm::mat4& vpMatrix,
+	const glm::mat4& vMatrix,
+	const glm::vec2& tan_fov,
+	const glm::vec2& focal,
+	const int up_width,
+	const int up_height,
+	const int supersampling_factor,
+	GaussianGeometry& gaussianGeometry,
+	glm::vec4& proj_mean,
+	glm::vec2& pixel_mean,
+	glm::vec3& cov2d,
+	glm::ivec2& p_min_bounds,
+	glm::ivec2& p_max_bounds,
+	float& det,
+	float& view_z
+) {
+	gaussianGeometry = scene.get_gaussian_transform(g_i);
+
+	glm::vec3 view_mean = CudaMath::transformPoint4x3(gaussianGeometry.mean, vMatrix);
+	view_z = view_mean.z;
+	if (-view_z <= 0.2f) {
+		return false;
+	}
+
+	proj_mean = vpMatrix * glm::vec4(gaussianGeometry.mean, 1.0f);
+	proj_mean *= 1.0f / proj_mean.w;
+
+	if (proj_mean.z < -1.0f || proj_mean.z > 1.0f) return false;
+
+	glm::mat3 cov = CudaMath::scale_rot_to_cov(gaussianGeometry.scale, gaussianGeometry.quat);
+	cov2d = CudaMath::computeCov2D(vMatrix, cov, gaussianGeometry.mean, tan_fov, focal);
+	cov2d += glm::vec3{ 0.3f * supersampling_factor * supersampling_factor, 0.0f, 0.3f * supersampling_factor * supersampling_factor };
+
+	det = cov2d.x * cov2d.z - cov2d.y * cov2d.y;
+	if (det <= 0.0f) {
+		return false;
+	}
+
+	pixel_mean = (glm::vec2(proj_mean.x, proj_mean.y) * 0.5f + glm::vec2(0.5f))
+		* glm::vec2(up_width, up_height);
+
+	if (!CudaMath::compute2DGaussianBounds3DGS(p_min_bounds, p_max_bounds, { up_width, up_height }, cov2d, pixel_mean))
+		return false;
+
+	return true;
+}
+
+__device__ __forceinline__ void splatGaussianPoint(
+	const uint32_t g_i,
+	const uint32_t num_points,
+	const GPUGaussianScene& scene,
+	uint64_t* __restrict__ imageBuffer,
+	uint2& seed,
+	const glm::vec2& pixel_mean,
+	const glm::vec3& cov2d,
+	const glm::ivec2& p_min_bounds,
+	const glm::ivec2& p_max_bounds,
+	const float det,
+	const float view_z,
+	const int up_width,
+	const int up_height,
+	const int numPasses,
+	const float near_plane,
+	const float far_plane,
+	const bool use_unbiased_2d_splatting,
+	const bool reduce_point_count,
+	const int supersampling_factor
+) {
+	uint64_t color = scene.get_color(g_i);
+	float opacity = scene.get_opacity(g_i);
+
+	const uint64_t view_depth_bits = CudaMath::convert_view_depth(view_z, near_plane, far_plane) << DEPTH_SHIFT;
+
+	glm::vec3 conic = CudaMath::conic(glm::vec3{ cov2d.x, cov2d.y, cov2d.z }, 1.0f / det);
+	const float c0 = __fsqrt_rn(cov2d.x);
+	const float c1 = cov2d.y / c0;
+	const float c2 = __fsqrt_rn(cov2d.z - c1 * c1);
+
+	int K = supersampling_factor * supersampling_factor * POINTS_PER_KERNEL;
+	if (!reduce_point_count) K = 1;
+
+	for (uint32_t pt = 0; pt < num_points; ++pt) {
+#pragma unroll
+		for (size_t p = 0; p < numPasses * K; ++p) {
+			float2 u = Random::pcg2d(seed);
+			float2 xy;
+			if (use_unbiased_2d_splatting) {
+				xy = Random::correctedBoxMuller(u.x, u.y, opacity);
+			}
+			else {
+				xy = Random::boxMuller(u.x, u.y);
+			}
+
+			glm::vec2 pixel(pixel_mean.x + c0 * xy.x, pixel_mean.y + c1 * xy.x + c2 * xy.y);
+			pixel = glm::floor(pixel);
+			int x = static_cast<int>(pixel.x);
+			int y = static_cast<int>(pixel.y);
+
+			glm::vec2 delta(pixel_mean - pixel);
+
+			// reject if outside of screen/tile grid aligned bounds of gaussian
+			if (x < p_min_bounds.x || x >= p_max_bounds.x || y < p_min_bounds.y || y >= p_max_bounds.y) continue;
+
+			// rejection mahalanobis sampling
+			float gaussian_weight = CudaMath::gaussian_value(conic, delta);
+			float alpha = opacity * gaussian_weight;
+			if (alpha < 1.0f / 255.0f) continue;
+
+			int index = posToMemory(x, y, p / K, numPasses, up_width, up_height);
+
+			if (imageBuffer[index] <= view_depth_bits) continue;
+
+			if (use_unbiased_2d_splatting) {
+				atomicMin(reinterpret_cast<unsigned long long*>(&imageBuffer[index]),
+					static_cast<unsigned long long>(view_depth_bits | color));
+			}
+			else {
+				atomicAddColor(&imageBuffer[index], view_depth_bits | color, true);
+			}
+		}
+	}
+}
+
+// --------------------------------------
 // Preprocess kernel and wrapper
 // --------------------------------------
 
 __global__ void preprocessGaussiansKernel(
 	GPUGaussianScene scene,
 	const bool onlyPreviouslyOccludedGaussians,
-	//Point Weights
 	uint32_t* __restrict__ d_gaussianPointWeights,
 	WEIGHT_MASK_TYPE* __restrict__ d_gaussianPointWeightMasksCurrent,
 	const WEIGHT_MASK_TYPE* __restrict__ d_gaussianPointWeightMasksPrevious,
@@ -25,6 +154,7 @@ __global__ void preprocessGaussiansKernel(
 	WEIGHT_MASK_TYPE* __restrict__ d_gaussianWeightFrameMask,
 	const bool freeze_culling,
 	//#endif    
+	uint64_t* __restrict__ imageBuffer,
 	const DepthMipChainDevice depthMipChain,
 	const GaussianBVH::GaussianBVHDevice gaussianBVHDev,
 	const glm::mat4 vpMatrix,
@@ -37,18 +167,21 @@ __global__ void preprocessGaussiansKernel(
 	const int up_width,
 	const int up_height,
 	const int frame_seed,
+	const int numPasses,
+	const float near_plane,
+	const float far_plane,
 	const bool enable_occlusion_culling,
 	const bool enable_hierarchical_culling,
 	const bool cull_small_gaussians,
 	const bool use_unbiased_2d_splatting,
 	const bool reduce_point_count,
-	const int supersampling_factor
+	const int supersampling_factor,
+	const int immediate_splat_threshold
 ) {
 	int idx = blockIdx.x * blockDim.x + threadIdx.x;
 	uint2 seed = Random::makeSeed(idx, frame_seed);
 
 	bool splats_points = false;
-	bool splats_tiles = false;
 	do {
 		if (idx >= numGaussians) break;
 
@@ -60,53 +193,35 @@ __global__ void preprocessGaussiansKernel(
 		if (freeze_culling && d_gaussianWeightFrameMask[idx] <= 0) break;
 #endif  
 
-		// in the second render pass, ignore gaussians that were previously marked as having non-zero importance
-		if (onlyPreviouslyOccludedGaussians
-			&& (
-				WorkloadDistributor::is_valid_weight(idx, d_gaussianPointWeightMasksPrevious)
-				)
-			) {
+		if (onlyPreviouslyOccludedGaussians && WorkloadDistributor::is_valid_weight(idx, d_gaussianPointWeightMasksPrevious)) {
 			break;
 		}
 
 		float opacity = scene.get_opacity(idx);
 		if (opacity <= 0.0f) break;
 
-		GaussianGeometry gaussianGeometry = scene.get_gaussian_transform(idx);
+		GaussianGeometry gaussianGeometry;
+		glm::vec4 proj_mean;
+		glm::vec2 pixel_mean;
+		glm::vec3 cov2d;
+		glm::ivec2 p_min_bounds, p_max_bounds;
+		float det, view_z;
 
-		glm::vec3 view_mean = CudaMath::transformPoint4x3(gaussianGeometry.mean, vMatrix);
-		if (-view_mean.z <= 0.2f) { // check view space
+		if (!loadAndTransformGaussian(
+			scene, idx, vpMatrix, vMatrix, tan_fov, focal,
+			up_width, up_height, supersampling_factor,
+			gaussianGeometry, proj_mean, pixel_mean, cov2d,
+			p_min_bounds, p_max_bounds, det, view_z))
+		{
 			break;
 		}
-		glm::mat3 cov = CudaMath::scale_rot_to_cov(gaussianGeometry.scale, gaussianGeometry.quat);
-		glm::vec3 cameraPosition = glm::vec3(camMatrix[3]);
-
-		glm::vec3 cov2d = CudaMath::computeCov2D(vMatrix, cov, gaussianGeometry.mean, tan_fov, focal);
-		cov2d += glm::vec3{ 0.3f * supersampling_factor * supersampling_factor, 0.0f, 0.3f * supersampling_factor * supersampling_factor };
-		const float det = cov2d.x * cov2d.z - cov2d.y * cov2d.y;
-
-		if (det <= 0.0f) {
-			break;
-		}
-
-		glm::vec4 proj_mean = vpMatrix * glm::vec4(gaussianGeometry.mean, 1.0f);
-		proj_mean *= 1.0f / proj_mean.w;
-
-		glm::vec2 pixel_mean = (glm::vec2(proj_mean.x, proj_mean.y) * 0.5f + glm::vec2(0.5f))
-			* glm::vec2(up_width, up_height);
-
-		glm::ivec2 p_min_bounds{};
-		glm::ivec2 p_max_bounds{};
-		if (!CudaMath::compute2DGaussianBounds3DGS(p_min_bounds, p_max_bounds, { up_width, up_height }, cov2d, pixel_mean))
-			break;
 
 		// Frustum culling
 		if (p_min_bounds.x >= up_width || p_min_bounds.y >= up_height || p_max_bounds.x < 0 || p_max_bounds.y < 0) {
 			break;
 		}
 
-		if (cull_small_gaussians)
-		{
+		if (cull_small_gaussians) {
 			float _trace = cov2d.x + cov2d.z;
 			float _traceOver2 = 0.5f * _trace;
 			float _term2 = __fsqrt_rn(fmaxf(0.1f, _traceOver2 * _traceOver2 - det));
@@ -117,9 +232,9 @@ __global__ void preprocessGaussiansKernel(
 		}
 
 		constexpr float TWO_PI = 2.0f * 3.14159265358979323846f;
-
 		float importance = 0.0f;
 		float s_det = __fsqrt_rn(det);
+
 		if (use_unbiased_2d_splatting) {
 			importance = TWO_PI * s_det * Random::dilog(opacity);
 		}
@@ -136,37 +251,50 @@ __global__ void preprocessGaussiansKernel(
 
 		uint32_t expected_num_points = static_cast<uint32_t>(importance);
 		uint32_t num_points = 0;
-		uint32_t num_tiles = 0;
 
-		if (use_unbiased_2d_splatting) {
+		if (use_unbiased_2d_splatting)
 			num_points = Random::poisson(seed, importance);
-			if (K > 1)
-				num_points = Random::stochastic_round(static_cast<float>(num_points) / K, Random::pcg2d(seed).x);
-		}
-		else {
-			num_points = Random::stochastic_round(importance / K, Random::pcg2d(seed).x);
-		}
+		else
+			num_points = Random::stochastic_round(importance, Random::pcg2d(seed).x);
 
-		if (num_points > 0) {
-			num_points = glm::min(num_points, (uint32_t)(up_width * up_height / (2 * K)));
+		if (K > 1)
+			num_points = Random::stochastic_round(static_cast<float>(num_points) / K, Random::pcg2d(seed).x);
+
+		if (num_points <= 0)  break;
+
+		num_points = glm::min(num_points, (uint32_t)(up_width * up_height / (2 * K)));
+
+#ifndef DISABLE_SPHERICAL_HARMONICS
+		glm::vec3 cameraPosition = glm::vec3(camMatrix[3]);
+		scene.set_color(idx, scene.get_sh(idx, 4, gaussianGeometry.mean, cameraPosition));
+#endif
+
+#ifdef  ENABLE_IMMEDIATE_SPLATTING
+		if (num_points <= immediate_splat_threshold) {
+			// Inline splat small point counts to save global memory and future kernel execution
+			splatGaussianPoint(
+				idx, num_points, scene, imageBuffer, seed,
+				pixel_mean, cov2d, p_min_bounds, p_max_bounds,
+				det, view_z, up_width, up_height, numPasses,
+				near_plane, far_plane, use_unbiased_2d_splatting,
+				reduce_point_count, supersampling_factor
+			);
+
+			// Set pointcount to 0 so the points WorkloadDistributor skips it later
+			d_gaussianPointWeights[idx] = 0;
+			splats_points = false;
+		}
+		else 
+#endif
+		{
 			d_gaussianPointWeights[idx] = num_points;
 			splats_points = true;
 		}
-		else
-			break;
 
 #ifdef ENABLE_FREEZING_CULLING
 		d_gaussianWeightFrameMask[idx] = 1;
 #endif 
-
-#ifdef DISABLE_SPHERICAL_HARMONICS
-		break;
-#endif // DISABLE_SPHERICAL_HARMONICS
-
-		scene.set_color(idx, scene.get_sh(idx, 4, gaussianGeometry.mean, cameraPosition));
 	} while (false);
-
-	//__syncwarp();
 
 	uint32_t points_mask = __ballot_sync(0xffffffff, splats_points);
 	if ((threadIdx.x & 31) == 0) {
@@ -179,7 +307,6 @@ __global__ void preprocessGaussiansKernel(
 }
 
 static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPreviouslyOccludedGaussians,
-	//Point Weights
 	uint32_t* __restrict__ d_gaussianPointWeights,
 	WEIGHT_MASK_TYPE* __restrict__ d_gaussianPointWeightMasksCurrent,
 	const WEIGHT_MASK_TYPE* __restrict__ d_gaussianPointWeightMasksPrevious,
@@ -187,6 +314,7 @@ static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPrev
 	WEIGHT_MASK_TYPE* __restrict__ d_gaussianWeightFrameMask,
 	bool freeze_culling,
 #endif      
+	uint64_t* __restrict__ imageBuffer,
 	const DepthMipChain& depthMipChain,
 	const GaussianBVH& gaussianBVH,
 	const glm::mat4& vpMatrix,
@@ -197,14 +325,15 @@ static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPrev
 	const glm::vec2& focal,
 	const int numGaussians,
 	const int up_width, const int up_height, const int frame_seed,
+	const int numPasses, const float near_plane, const float far_plane,
 	const bool enable_occlusion_culling,
 	const bool enable_hierarchical_culling,
 	const bool cull_small_gaussians,
 	const bool use_unbiased_2d_splatting,
 	const bool reduce_point_count,
-	const int supersampling_factor)
+	const int supersampling_factor,
+	const int immediate_splat_threshold)
 {
-
 #ifndef ENABLE_FREEZING_CULLING
 	WEIGHT_MASK_TYPE* d_gaussianWeightFrameMask = nullptr;
 	bool freeze_culling = false;
@@ -221,6 +350,7 @@ static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPrev
 		d_gaussianPointWeightMasksPrevious,
 		d_gaussianWeightFrameMask,
 		freeze_culling,
+		imageBuffer,
 		depthMipChain.device_view(),
 		gaussianBVH.device_view(),
 		vpMatrix,
@@ -233,12 +363,16 @@ static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPrev
 		up_width,
 		up_height,
 		frame_seed,
+		numPasses,
+		near_plane,
+		far_plane,
 		enable_occlusion_culling,
 		enable_hierarchical_culling,
 		cull_small_gaussians,
 		use_unbiased_2d_splatting,
 		reduce_point_count,
-		supersampling_factor
+		supersampling_factor,
+		immediate_splat_threshold
 	);
 }
 
@@ -272,85 +406,29 @@ __global__ void splatGaussianPointsKernel(
 	uint2 seed = Random::makeSeed(idx, frame_seed);
 	uint32_t g_i = d_gaussian_indices[idx];
 
-	// Gaussian transform and color
-	GaussianGeometry gaussianGeometry = scene.get_gaussian_transform(g_i);
-	uint64_t color = scene.get_color(g_i);
+	GaussianGeometry gaussianGeometry;
+	glm::vec4 proj_mean;
+	glm::vec2 pixel_mean;
+	glm::vec3 cov2d;
+	glm::ivec2 p_min_bounds, p_max_bounds;
+	float det, view_z;
 
-	glm::vec4 proj_mean = vpMatrix * glm::vec4(gaussianGeometry.mean, 1.0f);
-	proj_mean /= proj_mean.w;
-	if (proj_mean.z < -1.0f || proj_mean.z > 1.0f) return;
-
-	// Shared covariance in object space
-	glm::mat3 cov = CudaMath::scale_rot_to_cov(gaussianGeometry.scale, gaussianGeometry.quat);
-	// Screen-space Gaussian parameters
-	glm::vec3 cov2d = CudaMath::computeCov2D(vMatrix, cov, gaussianGeometry.mean, tan_fov, focal);
-	cov2d += glm::vec3{ 0.3f * supersampling_factor * supersampling_factor, 0.0f, 0.3f * supersampling_factor * supersampling_factor }; // slight blur
-
-	const float det = cov2d.x * cov2d.z - cov2d.y * cov2d.y;
-	if (det <= 0) return;
-
-	glm::vec3 conic = CudaMath::conic(glm::vec3{ cov2d.x, cov2d.y, cov2d.z }, 1.0f / det);
-
-	const float c0 = __fsqrt_rn(cov2d.x);
-	const float c1 = cov2d.y / c0;
-	const float c2 = __fsqrt_rn(cov2d.z - c1 * c1);
-
-	const glm::vec2 pixel_mean = (glm::vec2(proj_mean.x, proj_mean.y) * 0.5f + glm::vec2(0.5f))
-		* glm::vec2(up_width, up_height);
-
-	glm::ivec2 p_min_bounds{};
-	glm::ivec2 p_max_bounds{};
-	if (!CudaMath::compute2DGaussianBounds3DGS(p_min_bounds, p_max_bounds, { up_width, up_height }, cov2d, pixel_mean))
-		return;
-
-	glm::vec3 view_mean = CudaMath::transformPoint4x3(gaussianGeometry.mean, vMatrix);
-	const uint64_t view_depth_bits = CudaMath::convert_view_depth(view_mean.z, near_plane, far_plane) << DEPTH_SHIFT;
-	float opacity = scene.get_opacity(g_i);
-
-	int K = supersampling_factor * supersampling_factor * POINTS_PER_KERNEL;
-	if (!reduce_point_count) K = 1;
-#pragma unroll
-	for (size_t p = 0; p < numPasses * K; ++p)
+	if (!loadAndTransformGaussian(
+		scene, g_i, vpMatrix, vMatrix, tan_fov, focal,
+		up_width, up_height, supersampling_factor,
+		gaussianGeometry, proj_mean, pixel_mean, cov2d,
+		p_min_bounds, p_max_bounds, det, view_z))
 	{
-		float2 u = Random::pcg2d(seed);
-		float2 xy;
-		if (use_unbiased_2d_splatting) {
-			xy = Random::correctedBoxMuller(u.x, u.y, opacity);
-		}
-		else {
-			xy = Random::boxMuller(u.x, u.y);
-		}
-
-		glm::vec2 pixel(pixel_mean.x + c0 * xy.x, pixel_mean.y + c1 * xy.x + c2 * xy.y);
-		pixel = glm::floor(pixel);// -glm::vec2{ 0.5f, 0.f };
-		int x = static_cast<int>(pixel.x);
-		int y = static_cast<int>(pixel.y);
-
-		glm::vec2 delta(pixel_mean - pixel);
-
-		//reject if outside of screen/tile grid aligned bounds of gaussian
-		if (x < p_min_bounds.x || x >= p_max_bounds.x || y < p_min_bounds.y || y >= p_max_bounds.y) continue;
-
-		//rejection mahalanobis sampling
-		{
-			float gaussian_weight = CudaMath::gaussian_value(conic, delta);
-			float alpha = opacity * gaussian_weight;
-			if (alpha < 1.0f / 255.0f)// || Random::pcg2d(seed).x > 0.99f / alpha)
-				continue;
-		}
-		int index = posToMemory(x, y, p / K, numPasses, up_width, up_height);
-
-		if (depthBuffer[index] <= view_depth_bits) continue;
-
-		if (use_unbiased_2d_splatting) {
-			//atomicMin(&depthBuffer[index], view_depth_bits | color);
-			atomicMin(reinterpret_cast<unsigned long long*>(&depthBuffer[index]),
-				static_cast<unsigned long long>(view_depth_bits | color));
-		}
-		else {
-			atomicAddColor(&depthBuffer[index], view_depth_bits | color, true);
-		}
+		return;
 	}
+
+	splatGaussianPoint(
+		g_i, 1, scene, depthBuffer, seed,
+		pixel_mean, cov2d, p_min_bounds, p_max_bounds,
+		det, view_z, up_width, up_height, numPasses,
+		near_plane, far_plane, use_unbiased_2d_splatting,
+		reduce_point_count, supersampling_factor
+	);
 }
 
 static void launch_splatPointsKernel(GPUGaussianScene& scene,
@@ -574,16 +652,19 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 			per_frame_weights_mask.device_data(),
 			settings.freeze_culling,
 #endif    
+			current_image_buffer,
 			depthMipChain,
 			gaussianBVH,
 			vpMatrix, vMatrix, camMatrix, settings.d_frustumPlanes,
 			tan_fov, focal,
 			numGaussians,
 			settings.resolution.x * settings.supersampling_factor, settings.resolution.y * settings.supersampling_factor, frame,
+			numPasses, settings.near_view_plane, settings.far_view_plane,
 			settings.enable_occlusion_culling, enable_hierarchical_culling, settings.cull_small_gaussians,
 			settings.use_unbiased_2d_splatting,
 			settings.reduce_point_count,
-			settings.supersampling_factor);
+			settings.supersampling_factor,
+			settings.immediate_splat_threshold);
 
 		pointsWorkload->build();
 		uint32_t totalWeight = pointsWorkload->getNumSamples();

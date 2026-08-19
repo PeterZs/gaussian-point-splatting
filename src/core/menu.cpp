@@ -104,9 +104,18 @@ void Menu::render(RenderSettings& settings) {
                 settings.supersampling_factor = glm::clamp(settings.supersampling_factor, 1, 8);
                 settings.reset_accumulation = true;
             }
+#ifdef ENABLE_IMMEDIATE_SPLATTING
+            if (ImGui::DragInt("Immediate Splat Threshold", &settings.immediate_splat_threshold)) {
+                settings.immediate_splat_threshold = glm::max(settings.immediate_splat_threshold, 0);
+                settings.reset_accumulation = true;
+            }
+#endif // ENABLE_IMMEDIATE_SPLATTING
+
+
             if (ImGui::Checkbox("Reduce Point Count", &settings.reduce_point_count)) {
                 settings.reset_accumulation = true;
             }
+
             ImGui::Checkbox("Interpolate Camera", &settings.interpolate_camera);
 
             if (ImGui::DragFloat("FOVy", &settings.fovy, 0.1f, 1.0f, 150.0f, "%.3f")) {
