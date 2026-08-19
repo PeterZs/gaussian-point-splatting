@@ -111,6 +111,10 @@ RenderSettings parseCommandLine(int argc, char** argv) {
             std::string path = argv[++i];
             settings.model_path = path;
         }
+        else if (arg == "--sorted-model-output-path" || arg == "--sorted_model_output_path") {
+            std::string path = argv[++i];
+            settings.sorted_model_output_path = path;
+        }
         else if (arg == "--create-evaluation-screenshots" || arg == "--create_evaluation_screenshots") {
             settings.create_evaluation_screenshots = true;
         }

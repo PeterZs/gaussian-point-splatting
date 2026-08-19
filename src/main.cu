@@ -151,7 +151,7 @@ void render(RenderSettings& settings) {
 		float aspect = settings.get_aspectXY();
 
 		settings.cameraProjectionMatrix = settings.camera.getProjectionMatrix(settings.fovy, aspect, settings.near_view_plane, settings.far_view_plane);
-		
+
 		settings.cameraNormalProjectionMatrix = settings.camera.getNormalProjectionMatrix(settings.fovy, aspect, settings.near_view_plane, settings.far_view_plane);
 		settings.frustumPlanes = settings.camera.getFrustumPlanesFromViewMatrix(settings.fovy, settings.cameraViewMatrix,
 			aspect, settings.near_view_plane, settings.far_view_plane);
@@ -194,7 +194,7 @@ void render(RenderSettings& settings) {
 
 
 		if (settings.run_tests) {
-			int repeatCount = settings.frames_per_camera_keyframe;   
+			int repeatCount = settings.frames_per_camera_keyframe;
 			int numCameras = settings.total_test_keyframes;
 
 			int passesPerCamera = repeatCount + 1;
@@ -262,6 +262,16 @@ int main(int argc, char** argv) {
 	if (!settings.check_ready()) {
 		return -1;
 	}
+
+	if (!settings.sorted_model_output_path.empty())
+	{
+		GaussianEditor ge{};
+		ge.LoadFile(settings.model_path);
+		ge.sort_bvh_order();
+		ge.comments.push_back(PlyCommentUtils::makeBVHSorted());
+		ge.SaveFile(settings.sorted_model_output_path);
+	}
+
 	settings.load_camera();
 
 
@@ -273,7 +283,7 @@ int main(int argc, char** argv) {
 
 	if (settings.play_camera_path_on_start)
 		settings.start_camera_path();
-	
+
 	render(settings);
 
 	return 0;

@@ -377,7 +377,7 @@ static void launch_preprocessKernel(GPUGaussianScene& scene, const bool onlyPrev
 }
 
 // --------------------------------------
-// Points Splat kernel and wrapper (2D/3D)
+// Points Splat kernel and wrapper
 // --------------------------------------
 
 __global__ void splatGaussianPointsKernel(

@@ -38,6 +38,7 @@ struct RenderSettings {
     glm::ivec2 resolution = { 1920, 1080 };
 
     std::string model_path = "";
+    std::string sorted_model_output_path = "";
     std::string camera_path = "";
     std::string model_name = "";
 

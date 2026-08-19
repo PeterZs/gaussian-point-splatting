@@ -10,6 +10,8 @@
 
 // binary toggles
 
+// WARNING: DISABLING OR ENABLING SPHERICAL HARMONICS AFFECTS PLY FILE WRITES
+
 #define USE_COMPRESSED_GAUSSIANS // If defined, use 16 bytes for geometry, 60 bytes for SH (if enabled).
 //#define DISABLE_SPHERICAL_HARMONICS // If defined, SH evaluation is disabled. This significantly decreases the VRAM footprint of the renderer.
 //#define USE_SDR_COLOR // If defined, uses a 32 bit word instead of a vec3 to store color per Gaussian, DISABLE_SPHERICAL_HARMONICS preferably used together with.

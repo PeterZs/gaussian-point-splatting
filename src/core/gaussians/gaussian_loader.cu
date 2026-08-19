@@ -360,7 +360,7 @@ bool GaussianLoader::loadPlyFile(const std::string& filename,
         }
     }
 
-    if (sort_morton_order) {
+    if (sort_morton_order && !PlyCommentUtils::hasBVHSorted(comments)) {
         std::cout << "Sorting morton order" << std::endl;
         struct MinMax { glm::vec3 min; glm::vec3 max; };
         auto combine = [](const MinMax& a, const MinMax& b) -> MinMax {
@@ -510,18 +510,20 @@ void GaussianLoader::writePlyFile(const std::string& filename,
 #ifdef DISABLE_SPHERICAL_HARMONICS
     std::string header = makeHeaderMinimal(gaussians.size(), comments);
 #else
+
     std::string header = makeHeaderFull(gaussians.size(), comments);
 #endif
     file.write(header.c_str(), header.size());
 
+    const int rest_per_channel = SH_N - 1; // Usually 15 for degree 3
+
     for (const auto& g : gaussians) {
 #ifdef DISABLE_SPHERICAL_HARMONICS
         PLYFileGaussianMinimal out{};
-        uint32_t sh_color = static_cast<uint32_t>(g.sh[0]) << 24
-            | static_cast<uint32_t>(g.sh[1]) << 16
-            | static_cast<uint32_t>(g.sh[2]) << 8
-            | 0xFFu;
-        CudaMath::base_from_color(CudaMath::uintRGBAToVec4(sh_color), out.f_dc);
+
+        out.f_dc[0] = g.sh[0];
+        out.f_dc[1] = g.sh[1];
+        out.f_dc[2] = g.sh[2];
 
         out.mean[0] = g.mean.x; out.mean[1] = g.mean.y; out.mean[2] = g.mean.z;
         out.opacity = std::log(g.opacity / (1.0f - g.opacity));
@@ -533,12 +535,19 @@ void GaussianLoader::writePlyFile(const std::string& filename,
 #else
         PLYFileGaussianFull out{};
         out.mean[0] = g.mean.x; out.mean[1] = g.mean.y; out.mean[2] = g.mean.z;
-        out.sh[0] = g.sh[0]; out.sh[1] = g.sh[1]; out.sh[2] = g.sh[2];
+
+        // f_dc
+        out.sh[0] = g.sh[0];
+        out.sh[1] = g.sh[1];
+        out.sh[2] = g.sh[2];
+
         for (int j = 1; j < SH_N; ++j) {
-            out.sh[j * 3 + 0] = g.sh[(j - 1) + 3];
-            out.sh[j * 3 + 1] = g.sh[(j - 1) + SH_N + 2];
-            out.sh[j * 3 + 2] = g.sh[(j - 1) + 2 * SH_N + 1];
+            int rest_idx = j - 1;
+            out.sh[3 + rest_idx] = g.sh[j * 3 + 0];                           // Red
+            out.sh[3 + rest_idx + rest_per_channel] = g.sh[j * 3 + 1];        // Green
+            out.sh[3 + rest_idx + 2 * rest_per_channel] = g.sh[j * 3 + 2];    // Blue
         }
+
         out.opacity = std::log(g.opacity / (1.0f - g.opacity));
         glm::vec3 inv_scale = glm::log(g.scale);
         out.scale[0] = inv_scale.x; out.scale[1] = inv_scale.y; out.scale[2] = inv_scale.z;
@@ -551,5 +560,3 @@ void GaussianLoader::writePlyFile(const std::string& filename,
     file.close();
     std::cout << "Successfully wrote to file: " << path << "\n";
 }
-
-
