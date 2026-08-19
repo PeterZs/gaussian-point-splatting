@@ -560,7 +560,9 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 	auto renderPass = [&](TimingSystem::StochasticTiming& timings, const bool isFirstPass) {
 		int frame = 4 * settings.frame + (isFirstPass ? 0 : 2);
 
-		if (settings.enable_hierarchical_culling)
+		auto enable_hierarchical_culling = settings.enable_hierarchical_culling && !settings.fully_disable_hierarchical_culling;
+
+		if (enable_hierarchical_culling)
 			gaussianBVH.update_hierarchical_culling(settings.cameraPosition, settings.d_frustumPlanes, vpMatrix, depthMipChain, settings.enable_occlusion_culling);
 
 		// preprocess        
@@ -578,7 +580,7 @@ void GaussianPointSplatting::render(glm::vec3* d_image,
 			tan_fov, focal,
 			numGaussians,
 			settings.resolution.x * settings.supersampling_factor, settings.resolution.y * settings.supersampling_factor, frame,
-			settings.enable_occlusion_culling, settings.enable_hierarchical_culling, settings.cull_small_gaussians,
+			settings.enable_occlusion_culling, enable_hierarchical_culling, settings.cull_small_gaussians,
 			settings.use_unbiased_2d_splatting,
 			settings.reduce_point_count,
 			settings.supersampling_factor);
@@ -687,8 +689,8 @@ void GaussianPointSplatting::update_image_buffers(const RenderSettings& settings
 	d_imageBufferB = nullptr;
 
 	uint32_t N = wishImageBufferSize * sizeof(uint64_t);
-	ERRCHECK(cudaMalloc((void**) (&d_imageBufferA), N));
-	ERRCHECK(cudaMalloc((void**) (&d_imageBufferB), N));
+	ERRCHECK(cudaMalloc((void**)(&d_imageBufferA), N));
+	ERRCHECK(cudaMalloc((void**)(&d_imageBufferB), N));
 }
 
 GaussianPointSplatting::GaussianPointSplatting(const RenderSettings& settings)
@@ -696,7 +698,8 @@ GaussianPointSplatting::GaussianPointSplatting(const RenderSettings& settings)
 {
 	gaussians.clear();
 	std::vector<PlyComment> comments;
-	GaussianLoader::loadPlyFile(settings.model_path, gaussians, comments, settings.sort_morton_order);
+	auto sort_morton_order = settings.sort_morton_order && !settings.fully_disable_hierarchical_culling;
+	GaussianLoader::loadPlyFile(settings.model_path, gaussians, comments, sort_morton_order);
 	bool is_presorted = PlyCommentUtils::hasBVHSorted(comments);
 	std::cout << "is pre-sorted: " << (is_presorted ? "True" : "false") << std::endl;
 
@@ -705,15 +708,16 @@ GaussianPointSplatting::GaussianPointSplatting(const RenderSettings& settings)
 
 	pointsWorkload = new WorkloadDistributor(maxPointCount, numGaussians);
 
-	if (!settings.sort_morton_order) {
-		if (!is_presorted) {
-			gaussianBVH.build_bvh_and_reorder(gaussians);
-			gaussianBVH.release_bvh_host_data();
-			std::cout << "Sorted Gaussians." << std::endl;
+	if (!settings.fully_disable_hierarchical_culling) {
+		if (!settings.sort_morton_order) {
+			if (!is_presorted) {
+				gaussianBVH.build_bvh_and_reorder(gaussians);
+				gaussianBVH.release_bvh_host_data();
+				std::cout << "Sorted Gaussians." << std::endl;
+			}
 		}
+		gaussianBVH.build_hierarchical_structure(gaussians);
 	}
-
-	gaussianBVH.build_hierarchical_structure(gaussians);
 
 #ifdef ENABLE_FREEZING_CULLING
 	per_frame_weights_mask.resize(gaussians.size());
@@ -727,7 +731,7 @@ GaussianPointSplatting::GaussianPointSplatting(const RenderSettings& settings)
 
 	update_image_buffers(settings);
 
-	ERRCHECK(cudaMalloc((void**) (&d_tempDepthBuffer), settings.resolution.x * settings.resolution.y * sizeof(float)));
+	ERRCHECK(cudaMalloc((void**)(&d_tempDepthBuffer), settings.resolution.x * settings.resolution.y * sizeof(float)));
 }
 
 GaussianPointSplatting::~GaussianPointSplatting() {

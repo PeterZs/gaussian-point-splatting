@@ -9,6 +9,7 @@
 #include <thrust/sort.h>
 #include <thrust/execution_policy.h>
 #include <thrust/iterator/counting_iterator.h>
+#include <thrust/sequence.h>
 
 #ifdef _WIN32
 #define NOMINMAX
@@ -360,15 +361,14 @@ bool GaussianLoader::loadPlyFile(const std::string& filename,
     }
 
     if (sort_morton_order) {
+        std::cout << "Sorting morton order" << std::endl;
         struct MinMax { glm::vec3 min; glm::vec3 max; };
-
         auto combine = [](const MinMax& a, const MinMax& b) -> MinMax {
             return MinMax{ glm::min(a.min, b.min), glm::max(a.max, b.max) };
         };
         auto transform = [](const CPUGaussian& g) -> MinMax {
             return MinMax{ g.mean, g.mean };
         };
-
         MinMax mm = thrust::transform_reduce(thrust::host,
             gaussians.begin(), gaussians.end(),
             transform,
@@ -377,8 +377,9 @@ bool GaussianLoader::loadPlyFile(const std::string& filename,
         );
 
         const size_t N = gaussians.size();
-        std::vector<uint64_t> morton(N);
 
+        // Compute morton codes on host
+        std::vector<uint64_t> morton(N);
         thrust::for_each(thrust::host,
             thrust::make_counting_iterator<size_t>(0),
             thrust::make_counting_iterator<size_t>(N),
@@ -388,11 +389,24 @@ bool GaussianLoader::loadPlyFile(const std::string& filename,
             morton[i] = morton3D21(glm::ivec3(scaled));
         });
 
-        std::vector<size_t> idx(N);
-        std::iota(idx.begin(), idx.end(), 0);
+        // Sorted indices, back on host before we leave this scope
+        std::vector<uint32_t> idx(N);
 
-        thrust::sort(thrust::host, idx.begin(), idx.end(),
-            [&](size_t a, size_t b) { return morton[a] < morton[b]; });
+        // GPU sort in its own scope — all device memory freed on exit
+        {
+            thrust::device_vector<uint64_t> d_morton(morton); // upload
+            thrust::device_vector<uint32_t> d_idx(N);
+            thrust::sequence(d_idx.begin(), d_idx.end());     // 0,1,2,...,N-1
+
+            thrust::sort_by_key(thrust::device,
+                d_morton.begin(), d_morton.end(),
+                d_idx.begin());
+
+            thrust::copy(d_idx.begin(), d_idx.end(), idx.begin()); // download
+        } // d_morton and d_idx destroyed here, GPU memory released
+
+        morton.clear();
+        morton.shrink_to_fit(); // free host morton buffer too before permutation
 
         // In-place permutation via cycle decomposition
         std::vector<bool> visited(N, false);
@@ -408,7 +422,6 @@ bool GaussianLoader::loadPlyFile(const std::string& filename,
             }
         }
     }
-
     file.close();
     return true;
 }

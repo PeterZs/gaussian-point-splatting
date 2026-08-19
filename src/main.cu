@@ -77,6 +77,8 @@ void render(RenderSettings& settings) {
 		settings.load_camera_state(0);
 
 	while (!glfwWindowShouldClose(window.getGLFWWindow())) {
+		if (settings.fully_disable_hierarchical_culling)
+			settings.enable_hierarchical_culling = false;
 		if (settings.resolution != previous_resolution)
 		{
 			//settings.resolution = previous_resolution;

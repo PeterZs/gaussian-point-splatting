@@ -444,6 +444,14 @@ struct GPUGaussianSceneCompressed {
 		numGaussians = gaussians.size();
 		sceneBounds = GaussianSceneBounds(gaussians);
 
+		ERRCHECK(cudaMalloc((void**)&d_gaussians, numGaussians * sizeof(QuantizedGaussianGeometry)));
+		ERRCHECK(cudaMalloc((void**)&d_opacities, numGaussians * sizeof(GAUSSIAN_OPACITY_TYPE)));
+#ifndef DISABLE_SPHERICAL_HARMONICS
+		ERRCHECK(cudaMalloc((void**)&d_shs, numGaussians * sizeof(CompactSH)));
+#endif
+		ERRCHECK(cudaMalloc((void**)&d_colors, numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE)));
+
+		constexpr size_t CHUNK_SIZE = 1000000;
 		std::vector<QuantizedGaussianGeometry> gs;
 		std::vector<GAUSSIAN_OPACITY_TYPE> opacities;
 #ifndef DISABLE_SPHERICAL_HARMONICS
@@ -451,14 +459,18 @@ struct GPUGaussianSceneCompressed {
 #endif
 		std::vector<GAUSSIAN_COLOR_STORAGE_TYPE> colors;
 
-		gs.reserve(numGaussians);
-		opacities.reserve(numGaussians);
+		gs.reserve(CHUNK_SIZE);
+		opacities.reserve(CHUNK_SIZE);
 #ifndef DISABLE_SPHERICAL_HARMONICS
-		shs.reserve(numGaussians);
+		shs.reserve(CHUNK_SIZE);
 #endif
-		colors.reserve(numGaussians);
+		colors.reserve(CHUNK_SIZE);
 
-		for (const auto& g : gaussians) {
+		size_t chunkStartIdx = 0;
+
+		for (size_t i = 0; i < numGaussians; ++i) {
+			const auto& g = gaussians[i];
+
 			opacities.push_back(normalized_float_to_byte(g.opacity));
 			GAUSSIAN_COLOR_STORAGE_TYPE sh_eval = encode_color(CudaMath::color_from_base(g.sh));
 			colors.emplace_back(sh_eval);
@@ -467,21 +479,27 @@ struct GPUGaussianSceneCompressed {
 #endif
 			QuantizedGaussianGeometry cg = encode_gaussian_geometry(g.mean, g.rotation, g.scale, sceneBounds);
 			gs.push_back(cg);
-		}
 
-		ERRCHECK(cudaMalloc((void**) &d_gaussians, numGaussians * sizeof(QuantizedGaussianGeometry)));
-		ERRCHECK(cudaMemcpy(d_gaussians, gs.data(), numGaussians * sizeof(QuantizedGaussianGeometry), cudaMemcpyHostToDevice));
+			if (gs.size() == CHUNK_SIZE || i == numGaussians - 1) {
+				size_t currentChunkSize = gs.size();
 
-		ERRCHECK(cudaMalloc((void**) &d_opacities, numGaussians * sizeof(GAUSSIAN_OPACITY_TYPE)));
-		ERRCHECK(cudaMemcpy(d_opacities, opacities.data(), numGaussians * sizeof(GAUSSIAN_OPACITY_TYPE), cudaMemcpyHostToDevice));
-
+				ERRCHECK(cudaMemcpy(d_gaussians + chunkStartIdx, gs.data(), currentChunkSize * sizeof(QuantizedGaussianGeometry), cudaMemcpyHostToDevice));
+				ERRCHECK(cudaMemcpy(d_opacities + chunkStartIdx, opacities.data(), currentChunkSize * sizeof(GAUSSIAN_OPACITY_TYPE), cudaMemcpyHostToDevice));
 #ifndef DISABLE_SPHERICAL_HARMONICS
-		ERRCHECK(cudaMalloc((void**) &d_shs, numGaussians * sizeof(CompactSH)));
-		ERRCHECK(cudaMemcpy(d_shs, shs.data(), numGaussians * sizeof(CompactSH), cudaMemcpyHostToDevice));
+				ERRCHECK(cudaMemcpy(d_shs + chunkStartIdx, shs.data(), currentChunkSize * sizeof(CompactSH), cudaMemcpyHostToDevice));
 #endif
+				ERRCHECK(cudaMemcpy(d_colors + chunkStartIdx, colors.data(), currentChunkSize * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE), cudaMemcpyHostToDevice));
 
-		ERRCHECK(cudaMalloc((void**) &d_colors, numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE)));
-		ERRCHECK(cudaMemcpy(d_colors, colors.data(), numGaussians * sizeof(GAUSSIAN_COLOR_STORAGE_TYPE), cudaMemcpyHostToDevice));
+				chunkStartIdx += currentChunkSize;
+
+				gs.clear();
+				opacities.clear();
+#ifndef DISABLE_SPHERICAL_HARMONICS
+				shs.clear();
+#endif
+				colors.clear();
+			}
+		}
 	}
 
 	__device__ __forceinline__ GaussianGeometry get_gaussian_transform(

@@ -54,6 +54,7 @@ struct RenderSettings {
     bool freeze_culling = false;
     bool enable_occlusion_culling = true;
     bool enable_hierarchical_culling = true;
+    bool fully_disable_hierarchical_culling = false;
     bool cull_small_gaussians = false;
     bool use_unbiased_2d_splatting = true;
     bool interpolate_camera = false;
